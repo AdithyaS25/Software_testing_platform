@@ -30,7 +30,7 @@ importers:
         specifier: ^5.0.6
         version: 5.0.6
       '@types/node':
-        specifier: ^24.10.1
+        specifier: ^24.10.9
         version: 24.10.9
       prisma:
         specifier: ^7.3.0
