@@ -3,23 +3,33 @@ import express from "express";
 import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { hashPassword } from "./utils/password";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+
+import { hashPassword } from "./utils/password";
 import { signAccessToken, signRefreshToken } from "./utils/jwt";
 
 const app = express();
 const PORT = 4000;
 
+/* =======================
+   PRISMA SETUP
+   ======================= */
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
 
 const prisma = new PrismaClient({ adapter });
 
+/* =======================
+   MIDDLEWARE
+   ======================= */
 app.use(cors());
 app.use(express.json());
 
+/* =======================
+   HEALTH CHECKS
+   ======================= */
 app.get("/health", (_req, res) => {
   res.json({ status: "API running" });
 });
@@ -30,10 +40,10 @@ app.get("/db-check", async (_req, res) => {
 });
 
 /* =======================
-   AUTH: REGISTER
+   AUTH: REGISTER (FR-AUTH-001)
    ======================= */
 app.post("/auth/register", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body ?? {};
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password required" });
@@ -56,7 +66,7 @@ app.post("/auth/register", async (req, res) => {
     },
   });
 
-  res.status(201).json({
+  return res.status(201).json({
     id: user.id,
     email: user.email,
   });
@@ -66,7 +76,7 @@ app.post("/auth/register", async (req, res) => {
    AUTH: LOGIN (FR-AUTH-002)
    ======================= */
 app.post("/auth/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body ?? {};
 
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password required" });
@@ -136,9 +146,7 @@ app.post("/auth/login", async (req, res) => {
     data: {
       tokenHash: refreshTokenHash,
       userId: user.id,
-      expiresAt: new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000
-      ),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
   });
 
@@ -157,7 +165,7 @@ app.post("/auth/login", async (req, res) => {
    AUTH: FORGOT PASSWORD (FR-AUTH-003)
    ======================= */
 app.post("/auth/forgot-password", async (req, res) => {
-  const { email } = req.body;
+  const { email } = req.body ?? {};
 
   if (!email) {
     return res.status(400).json({ message: "Email required" });
@@ -167,7 +175,6 @@ app.post("/auth/forgot-password", async (req, res) => {
     where: { email },
   });
 
-  // Always return success (security best practice)
   if (!user) {
     return res.json({
       message: "If the email exists, a reset link has been sent",
@@ -184,11 +191,10 @@ app.post("/auth/forgot-password", async (req, res) => {
     data: {
       tokenHash,
       userId: user.id,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
     },
   });
 
-  // Email stub (allowed for internship)
   console.log(
     `Password reset link: http://localhost:4000/auth/reset-password?token=${rawToken}`
   );
@@ -198,13 +204,11 @@ app.post("/auth/forgot-password", async (req, res) => {
   });
 });
 
-
 /* =======================
    AUTH: RESET PASSWORD (FR-AUTH-003)
    ======================= */
 app.post("/auth/reset-password", async (req, res) => {
-  const token = req.body?.token;
-  const newPassword = req.body?.newPassword;
+  const { token, newPassword } = req.body ?? {};
 
   if (!token || !newPassword) {
     return res.status(400).json({
@@ -220,9 +224,7 @@ app.post("/auth/reset-password", async (req, res) => {
   const resetToken = await prisma.passwordResetToken.findFirst({
     where: {
       tokenHash,
-      expiresAt: {
-        gt: new Date(),
-      },
+      expiresAt: { gt: new Date() },
     },
   });
 
@@ -232,16 +234,59 @@ app.post("/auth/reset-password", async (req, res) => {
     });
   }
 
+  /* =======================
+     PASSWORD HISTORY CHECK
+     ======================= */
+  const history = await prisma.passwordHistory.findMany({
+    where: { userId: resetToken.userId },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+  });
+
+  for (const entry of history) {
+    const reused = await bcrypt.compare(newPassword, entry.hash);
+    if (reused) {
+      return res.status(400).json({
+        message: "Cannot reuse last 5 passwords",
+      });
+    }
+  }
+
   const newPasswordHash = await hashPassword(newPassword);
 
+  // Update password
   await prisma.user.update({
     where: { id: resetToken.userId },
+    data: { passwordHash: newPasswordHash },
+  });
+
+  // Save password history
+  await prisma.passwordHistory.create({
     data: {
-      passwordHash: newPasswordHash,
+      userId: resetToken.userId,
+      hash: newPasswordHash,
     },
   });
 
-  // Invalidate token after use
+  /* =======================
+     STEP 2: TRIM OLD HISTORY
+     ======================= */
+  const oldPasswords = await prisma.passwordHistory.findMany({
+    where: { userId: resetToken.userId },
+    orderBy: { createdAt: "desc" },
+    skip: 5,
+    select: { id: true },
+  });
+
+  if (oldPasswords.length > 0) {
+    await prisma.passwordHistory.deleteMany({
+      where: {
+        id: { in: oldPasswords.map(p => p.id) },
+      },
+    });
+  }
+
+  // Invalidate reset tokens
   await prisma.passwordResetToken.deleteMany({
     where: { userId: resetToken.userId },
   });
@@ -255,9 +300,7 @@ app.post("/auth/reset-password", async (req, res) => {
    AUTH: CHANGE PASSWORD (FR-AUTH-003)
    ======================= */
 app.post("/auth/change-password", async (req, res) => {
-  const email = req.body?.email;
-  const currentPassword = req.body?.currentPassword;
-  const newPassword = req.body?.newPassword;
+  const { email, currentPassword, newPassword } = req.body ?? {};
 
   if (!email || !currentPassword || !newPassword) {
     return res.status(400).json({
@@ -282,21 +325,66 @@ app.post("/auth/change-password", async (req, res) => {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
+  /* =======================
+     PASSWORD HISTORY CHECK
+     ======================= */
+  const history = await prisma.passwordHistory.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+  });
+
+  for (const entry of history) {
+    const reused = await bcrypt.compare(newPassword, entry.hash);
+    if (reused) {
+      return res.status(400).json({
+        message: "Cannot reuse last 5 passwords",
+      });
+    }
+  }
+
   const newPasswordHash = await hashPassword(newPassword);
 
+  // Update password
   await prisma.user.update({
     where: { id: user.id },
+    data: { passwordHash: newPasswordHash },
+  });
+
+  // Save password history
+  await prisma.passwordHistory.create({
     data: {
-      passwordHash: newPasswordHash,
+      userId: user.id,
+      hash: newPasswordHash,
     },
   });
+
+  /* =======================
+     TRIM OLD PASSWORD HISTORY
+     ======================= */
+  const oldPasswords = await prisma.passwordHistory.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    skip: 5,
+    select: { id: true },
+  });
+
+  if (oldPasswords.length > 0) {
+    await prisma.passwordHistory.deleteMany({
+      where: {
+        id: { in: oldPasswords.map(p => p.id) },
+      },
+    });
+  }
 
   return res.json({
     message: "Password changed successfully",
   });
 });
 
-
+/* =======================
+   SERVER START
+   ======================= */
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
 });
