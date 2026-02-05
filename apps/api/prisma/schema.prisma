@@ -22,6 +22,7 @@ model User {
   updatedAt            DateTime @default(now()) @updatedAt
 
   passwordResetTokens PasswordResetToken[]
+  passwordHistory PasswordHistory[]
 }
 
 model RefreshToken {
@@ -39,6 +40,15 @@ model PasswordResetToken {
   tokenHash String
   userId    String
   expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  hash      String
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
