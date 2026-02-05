@@ -76,12 +76,10 @@ app.post("/auth/login", async (req, res) => {
     where: { email },
   });
 
-  // Do not reveal whether email or password is wrong
   if (!user) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
-  // Account lock check (5 attempts → 15 min lock)
   if (user.lockUntil && user.lockUntil > new Date()) {
     return res.status(423).json({
       message: "Account locked. Try again later.",
@@ -93,7 +91,6 @@ app.post("/auth/login", async (req, res) => {
     user.passwordHash
   );
 
-  // Wrong password
   if (!isPasswordValid) {
     const attempts = user.failedLoginAttempts + 1;
 
@@ -111,7 +108,6 @@ app.post("/auth/login", async (req, res) => {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
-  // Successful login → reset counters
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -121,7 +117,6 @@ app.post("/auth/login", async (req, res) => {
     },
   });
 
-  // Issue JWTs
   const accessToken = signAccessToken({
     sub: user.id,
     email: user.email,
@@ -132,7 +127,6 @@ app.post("/auth/login", async (req, res) => {
     sub: user.id,
   });
 
-  // Store hashed refresh token (for session management)
   const refreshTokenHash = crypto
     .createHash("sha256")
     .update(refreshToken)
@@ -156,6 +150,51 @@ app.post("/auth/login", async (req, res) => {
       email: user.email,
       role: user.role,
     },
+  });
+});
+
+/* =======================
+   AUTH: FORGOT PASSWORD (FR-AUTH-003)
+   ======================= */
+app.post("/auth/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email required" });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  // Always return success (security best practice)
+  if (!user) {
+    return res.json({
+      message: "If the email exists, a reset link has been sent",
+    });
+  }
+
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(rawToken)
+    .digest("hex");
+
+  await prisma.passwordResetToken.create({
+    data: {
+      tokenHash,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+    },
+  });
+
+  // Email stub (allowed for internship)
+  console.log(
+    `Password reset link: http://localhost:4000/auth/reset-password?token=${rawToken}`
+  );
+
+  return res.json({
+    message: "If the email exists, a reset link has been sent",
   });
 });
 
