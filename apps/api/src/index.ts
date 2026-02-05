@@ -251,6 +251,52 @@ app.post("/auth/reset-password", async (req, res) => {
   });
 });
 
+/* =======================
+   AUTH: CHANGE PASSWORD (FR-AUTH-003)
+   ======================= */
+app.post("/auth/change-password", async (req, res) => {
+  const email = req.body?.email;
+  const currentPassword = req.body?.currentPassword;
+  const newPassword = req.body?.newPassword;
+
+  if (!email || !currentPassword || !newPassword) {
+    return res.status(400).json({
+      message: "Email, current password, and new password are required",
+    });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const isCurrentPasswordValid = await bcrypt.compare(
+    currentPassword,
+    user.passwordHash
+  );
+
+  if (!isCurrentPasswordValid) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const newPasswordHash = await hashPassword(newPassword);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash: newPasswordHash,
+    },
+  });
+
+  return res.json({
+    message: "Password changed successfully",
+  });
+});
+
+
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
 });
