@@ -198,6 +198,59 @@ app.post("/auth/forgot-password", async (req, res) => {
   });
 });
 
+
+/* =======================
+   AUTH: RESET PASSWORD (FR-AUTH-003)
+   ======================= */
+app.post("/auth/reset-password", async (req, res) => {
+  const token = req.body?.token;
+  const newPassword = req.body?.newPassword;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({
+      message: "Token and new password are required",
+    });
+  }
+
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  const resetToken = await prisma.passwordResetToken.findFirst({
+    where: {
+      tokenHash,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  if (!resetToken) {
+    return res.status(400).json({
+      message: "Invalid or expired reset token",
+    });
+  }
+
+  const newPasswordHash = await hashPassword(newPassword);
+
+  await prisma.user.update({
+    where: { id: resetToken.userId },
+    data: {
+      passwordHash: newPasswordHash,
+    },
+  });
+
+  // Invalidate token after use
+  await prisma.passwordResetToken.deleteMany({
+    where: { userId: resetToken.userId },
+  });
+
+  return res.json({
+    message: "Password reset successful",
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
 });
