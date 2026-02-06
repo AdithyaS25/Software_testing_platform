@@ -1,31 +1,26 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { prisma } from "./prisma";
 
 import { hashPassword } from "./utils/password";
 import { signAccessToken, signRefreshToken } from "./utils/jwt";
 
+import authRoutes from "./auth/auth.route";
+import cookieParser from "cookie-parser";
+
 const app = express();
 const PORT = 4000;
-
-/* =======================
-   PRISMA SETUP
-   ======================= */
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const prisma = new PrismaClient({ adapter });
 
 /* =======================
    MIDDLEWARE
    ======================= */
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+app.use("/auth", authRoutes);
 
 /* =======================
    HEALTH CHECKS
@@ -141,24 +136,35 @@ app.post("/auth/login", async (req, res) => {
     .createHash("sha256")
     .update(refreshToken)
     .digest("hex");
+    
+const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-  await prisma.refreshToken.create({
-    data: {
-      tokenHash: refreshTokenHash,
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    },
-  });
+await prisma.refreshToken.create({
+  data: {
+    token: refreshToken,
+    userId: user.id,
+    expiresAt,
+    userAgent: req.headers["user-agent"] ?? null,
+    ipAddress: req.ip ?? null,
+  },
+});
 
-  return res.status(200).json({
-    accessToken,
-    refreshToken,
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    },
-  });
+
+  res.cookie("refreshToken", refreshToken, {
+  httpOnly: true,
+  sameSite: "strict",
+  secure: false, // set true in production (HTTPS)
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+});
+
+return res.status(200).json({
+  accessToken,
+  user: {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+  },
+});
 });
 
 /* =======================
