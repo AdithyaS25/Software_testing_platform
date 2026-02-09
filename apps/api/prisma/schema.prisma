@@ -6,35 +6,42 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  TESTER
+  DEVELOPER
+  ADMIN
+}
+
 model User {
-  id                   String   @id @default(uuid())
-  email                String   @unique
-  passwordHash         String
-  role                 String   @default("USER")
+  id           String @id @default(uuid())
+  email        String @unique
+  passwordHash String
+  role UserRole @default(TESTER)
 
-  failedLoginAttempts  Int      @default(0)
-  lockUntil            DateTime?
-  lastLoginAt          DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockUntil           DateTime?
+  lastLoginAt         DateTime?
 
-  refreshTokens        RefreshToken[]   // 👈 REQUIRED inverse relation
+  refreshTokens RefreshToken[]
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   passwordResetTokens PasswordResetToken[]
-  passwordHistory PasswordHistory[]
+  passwordHistory     PasswordHistory[]
 
+  testCases TestCase[]
 }
 
 model RefreshToken {
-  id          String   @id @default(uuid())
-  token       String   @unique
-  userId      String
-  expiresAt   DateTime
-  revokedAt   DateTime?
-  createdAt   DateTime @default(now())
-  userAgent   String?
-  ipAddress   String?
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userAgent String?
+  ipAddress String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -59,50 +66,50 @@ model PasswordHistory {
 }
 
 model TestCase {
-  id                      String   @id @default(uuid())
-  testCaseId              String   @unique
-  title                   String   @db.VarChar(200)
-  description             String
+  id          String @id @default(uuid())
+  testCaseId  String @unique
+  title       String @db.VarChar(200)
+  description String
 
-  module                  String
-  priority                TestCasePriority
-  severity                TestCaseSeverity
-  type                    TestCaseType
-  status                  TestCaseStatus
+  module   String
+  priority TestCasePriority
+  severity TestCaseSeverity
+  type     TestCaseType
+  status   TestCaseStatus
 
-  preConditions            String?
-  testDataRequirements     String?
-  environmentRequirements  String?
-  postConditions           String?
-  cleanupSteps             String?
+  preConditions           String?
+  testDataRequirements    String?
+  environmentRequirements String?
+  postConditions          String?
+  cleanupSteps            String?
 
-  estimatedDuration        Int?
-  automationStatus         AutomationStatus
-  automationScriptLink     String?
+  estimatedDuration    Int?
+  automationStatus     AutomationStatus
+  automationScriptLink String?
 
-  tags                     String[]
-  version                  Int      @default(1)
+  tags    String[]
+  version Int      @default(1)
 
-  createdById              String
-  createdBy                User     @relation(fields: [createdById], references: [id])
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
 
-  steps                    TestStep[]
+  steps TestStep[]
 
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TestStep {
-  id             String   @id @default(uuid())
-  testCaseId     String
-  testCase       TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  testCaseId String
+  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
 
   stepNumber     Int
   action         String
   testData       String?
   expectedResult String
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 enum TestCasePriority {
@@ -145,3 +152,5 @@ enum AutomationStatus {
   AUTOMATED
   CANNOT_AUTOMATE
 }
+
+
