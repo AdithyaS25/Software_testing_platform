@@ -58,3 +58,90 @@ model PasswordHistory {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model TestCase {
+  id                      String   @id @default(uuid())
+  testCaseId              String   @unique
+  title                   String   @db.VarChar(200)
+  description             String
+
+  module                  String
+  priority                TestCasePriority
+  severity                TestCaseSeverity
+  type                    TestCaseType
+  status                  TestCaseStatus
+
+  preConditions            String?
+  testDataRequirements     String?
+  environmentRequirements  String?
+  postConditions           String?
+  cleanupSteps             String?
+
+  estimatedDuration        Int?
+  automationStatus         AutomationStatus
+  automationScriptLink     String?
+
+  tags                     String[]
+  version                  Int      @default(1)
+
+  createdById              String
+  createdBy                User     @relation(fields: [createdById], references: [id])
+
+  steps                    TestStep[]
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+model TestStep {
+  id             String   @id @default(uuid())
+  testCaseId     String
+  testCase       TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  stepNumber     Int
+  action         String
+  testData       String?
+  expectedResult String
+
+  createdAt      DateTime @default(now())
+}
+
+enum TestCasePriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TestCaseSeverity {
+  BLOCKER
+  CRITICAL
+  MAJOR
+  MINOR
+  TRIVIAL
+}
+
+enum TestCaseType {
+  FUNCTIONAL
+  REGRESSION
+  SMOKE
+  INTEGRATION
+  UAT
+  PERFORMANCE
+  SECURITY
+  USABILITY
+}
+
+enum TestCaseStatus {
+  DRAFT
+  READY_FOR_REVIEW
+  APPROVED
+  DEPRECATED
+  ARCHIVED
+}
+
+enum AutomationStatus {
+  NOT_AUTOMATED
+  IN_PROGRESS
+  AUTOMATED
+  CANNOT_AUTOMATE
+}
