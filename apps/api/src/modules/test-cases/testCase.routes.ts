@@ -5,6 +5,7 @@ import {
   createTestCaseController,
   listTestCasesController,
 } from "./testCase.controller";
+import { getTestCaseByIdController } from "./testCase.controller";
 
 const router: Router = Router();
 
@@ -18,6 +19,12 @@ router.get(
   "/",
   asHandler(authenticate),
   asHandler(listTestCasesController)
+);
+
+router.get(
+  "/:id",
+  asHandler(authenticate),
+  asHandler(getTestCaseByIdController)
 );
 
 export default router;
