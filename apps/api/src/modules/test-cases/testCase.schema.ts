@@ -75,6 +75,7 @@ export const listTestCasesQuerySchema = z.object({
   status: z.nativeEnum(TestCaseStatus).optional(),
   priority: z.nativeEnum(TestCasePriority).optional(),
   module: z.string().min(1).optional(),
+  search: z.string().min(1).optional(),
 });
 
 export type ListTestCasesQuery = z.infer<

@@ -53,7 +53,7 @@ export async function listTestCasesController(
     });
   }
 
-  const { page, limit, status, priority, module } = parsed.data;
+  const { page, limit, status, priority, module, search } = parsed.data;
 
   const result = await listTestCases({
     page,
@@ -61,6 +61,7 @@ export async function listTestCasesController(
     status,
     priority,
     module,
+    search,
     userId: req.user.id,
     role: req.user.role,
   });

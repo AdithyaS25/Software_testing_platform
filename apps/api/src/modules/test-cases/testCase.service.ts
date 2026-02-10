@@ -77,16 +77,40 @@ interface ListTestCasesParams {
   status: TestCaseStatus | undefined;
   priority: TestCasePriority | undefined;
   module: string | undefined;
+  search: string | undefined;
   userId: string;
   role: UserRole;
 }
 
 export async function listTestCases(params: ListTestCasesParams) {
-  const { page, limit, status, priority, module, userId, role } = params;
+  const { page, limit, status, priority, module, search, userId, role } = params;
 
   const skip = (page - 1) * limit;
 
   const where: any = {};
+  if (search) {
+  where.OR = [
+    {
+      testCaseId: {
+        contains: search,
+        mode: "insensitive",
+      },
+    },
+    {
+      title: {
+        contains: search,
+        mode: "insensitive",
+      },
+    },
+    {
+      module: {
+        contains: search,
+        mode: "insensitive",
+      },
+    },
+  ];
+}
+
 
   if (role === UserRole.TESTER) {
     where.createdById = userId;
