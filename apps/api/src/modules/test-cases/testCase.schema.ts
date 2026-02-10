@@ -1,4 +1,9 @@
 import { z } from "zod";
+import { TestCasePriority, TestCaseStatus } from "@prisma/client";
+
+/* ============================
+   CREATE TEST CASE (FR-TC-001)
+   ============================ */
 
 export const createTestCaseSchema = z.object({
   title: z.string().min(1).max(200),
@@ -58,3 +63,20 @@ export const createTestCaseSchema = z.object({
 });
 
 export type CreateTestCaseInput = z.infer<typeof createTestCaseSchema>;
+
+/* ============================
+   LIST TEST CASES (FR-TC-002)
+   ============================ */
+
+export const listTestCasesQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(50).default(10),
+
+  status: z.nativeEnum(TestCaseStatus).optional(),
+  priority: z.nativeEnum(TestCasePriority).optional(),
+  module: z.string().min(1).optional(),
+});
+
+export type ListTestCasesQuery = z.infer<
+  typeof listTestCasesQuerySchema
+>;

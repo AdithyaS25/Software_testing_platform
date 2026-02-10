@@ -1,5 +1,14 @@
 import { prisma } from "../../prisma";
 import { CreateTestCaseInput } from "./testCase.schema";
+import {
+  TestCasePriority,
+  TestCaseStatus,
+  UserRole,
+} from "@prisma/client";
+
+/* ============================
+   CREATE TEST CASE (FR-TC-001)
+   ============================ */
 
 function generateTestCaseId(sequence: number): string {
   const year = new Date().getFullYear();
@@ -11,9 +20,7 @@ export async function createTestCase(
   userId: string
 ) {
   return prisma.$transaction(async (tx) => {
-    // Get count to generate sequential Test Case ID
     const count = await tx.testCase.count();
-
     const testCaseId = generateTestCaseId(count + 1);
 
     const testCase = await tx.testCase.create({
@@ -58,4 +65,69 @@ export async function createTestCase(
 
     return testCase;
   });
+}
+
+/* ============================
+   LIST TEST CASES (FR-TC-002)
+   ============================ */
+
+interface ListTestCasesParams {
+  page: number;
+  limit: number;
+  status: TestCaseStatus | undefined;
+  priority: TestCasePriority | undefined;
+  module: string | undefined;
+  userId: string;
+  role: UserRole;
+}
+
+export async function listTestCases(params: ListTestCasesParams) {
+  const { page, limit, status, priority, module, userId, role } = params;
+
+  const skip = (page - 1) * limit;
+
+  const where: any = {};
+
+  if (role === UserRole.TESTER) {
+    where.createdById = userId;
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (priority) {
+    where.priority = priority;
+  }
+
+  if (module) {
+    where.module = module;
+  }
+
+  const [total, items] = await Promise.all([
+    prisma.testCase.count({ where }),
+    prisma.testCase.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        testCaseId: true,
+        title: true,
+        module: true,
+        priority: true,
+        severity: true,
+        status: true,
+        version: true,
+        createdAt: true,
+        createdById: true,
+      },
+    }),
+  ]);
+
+  return {
+    total,
+    items,
+  };
 }
