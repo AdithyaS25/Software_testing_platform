@@ -11,16 +11,21 @@ import { signAccessToken, signRefreshToken } from "./utils/jwt";
 import authRoutes from "./auth/auth.route";
 import cookieParser from "cookie-parser";
 
+import testCaseRoutes from "./modules/test-cases/testCase.routes";
+
+
 const app = express();
 const PORT = 4000;
 
-/* =======================
+/* =======================  
    MIDDLEWARE
    ======================= */
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 app.use("/auth", authRoutes);
+app.use("/test-cases", testCaseRoutes);
+
 
 /* =======================
    HEALTH CHECKS
