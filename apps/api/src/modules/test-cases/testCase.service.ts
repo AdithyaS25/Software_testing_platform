@@ -83,50 +83,36 @@ interface ListTestCasesParams {
 }
 
 export async function listTestCases(params: ListTestCasesParams) {
-  const { page, limit, status, priority, module, search, userId, role } = params;
+  const {
+    page,
+    limit,
+    status,
+    priority,
+    module,
+    search,
+    userId,
+    role,
+  } = params;
 
   const skip = (page - 1) * limit;
 
   const where: any = {};
-  if (search) {
-  where.OR = [
-    {
-      testCaseId: {
-        contains: search,
-        mode: "insensitive",
-      },
-    },
-    {
-      title: {
-        contains: search,
-        mode: "insensitive",
-      },
-    },
-    {
-      module: {
-        contains: search,
-        mode: "insensitive",
-      },
-    },
-  ];
-}
 
+  if (search) {
+    where.OR = [
+      { testCaseId: { contains: search, mode: "insensitive" } },
+      { title: { contains: search, mode: "insensitive" } },
+      { module: { contains: search, mode: "insensitive" } },
+    ];
+  }
 
   if (role === UserRole.TESTER) {
     where.createdById = userId;
   }
 
-  if (status) {
-    where.status = status;
-  }
-
-  if (priority) {
-    where.priority = priority;
-  }
-
-  if (module) {
-    where.module = module;
-  }
+  if (status) where.status = status;
+  if (priority) where.priority = priority;
+  if (module) where.module = module;
 
   const [total, items] = await Promise.all([
     prisma.testCase.count({ where }),
@@ -150,8 +136,30 @@ export async function listTestCases(params: ListTestCasesParams) {
     }),
   ]);
 
-  return {
-    total,
-    items,
-  };
+  return { total, items };
+}
+
+/* ============================
+   VIEW TEST CASE (FR-TC-003)
+   ============================ */
+
+export async function getTestCaseById(
+  id: string,
+  userId: string,
+  role: UserRole
+) {
+  const where: any = { id };
+
+  if (role === UserRole.TESTER) {
+    where.createdById = userId;
+  }
+
+  return prisma.testCase.findFirst({
+    where,
+    include: {
+      steps: {
+        orderBy: { stepNumber: "asc" },
+      },
+    },
+  });
 }

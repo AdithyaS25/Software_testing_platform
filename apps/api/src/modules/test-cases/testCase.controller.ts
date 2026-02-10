@@ -7,6 +7,7 @@ import {
 import {
   createTestCase,
   listTestCases,
+  getTestCaseById,
 } from "./testCase.service";
 
 /* ============================
@@ -17,8 +18,6 @@ export async function createTestCaseController(
   req: AuthenticatedRequest,
   res: Response
 ) {
-  const userId = req.user.id;
-
   const parsed = createTestCaseSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -28,7 +27,7 @@ export async function createTestCaseController(
     });
   }
 
-  const testCase = await createTestCase(parsed.data, userId);
+  const testCase = await createTestCase(parsed.data, req.user.id);
 
   return res.status(201).json({
     message: "Test case created successfully",
@@ -73,5 +72,39 @@ export async function listTestCasesController(
       total: result.total,
     },
     data: result.items,
+  });
+}
+
+/* ============================
+   VIEW TEST CASE (FR-TC-003)
+   ============================ */
+
+export async function getTestCaseByIdController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  const { id } = req.params;
+
+  // ✅ Validate route param
+  if (!id || Array.isArray(id)) {
+    return res.status(400).json({
+      message: "Invalid test case id",
+    });
+  }
+
+  const testCase = await getTestCaseById(
+    id,
+    req.user.id,
+    req.user.role
+  );
+
+  if (!testCase) {
+    return res.status(404).json({
+      message: "Test case not found",
+    });
+  }
+
+  return res.status(200).json({
+    data: testCase,
   });
 }
