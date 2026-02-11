@@ -233,3 +233,81 @@ const updated = await tx.testCase.update({
     return updated;
   });
 }
+
+/* ============================
+   CLONE TEST CASE (FR-TC-003)
+   ============================ */
+
+export async function cloneTestCase(
+  id: string,
+  userId: string,
+  role: UserRole
+) {
+  const where: any = { id };
+
+  // 🔐 Testers can clone only their own test cases
+  if (role === UserRole.TESTER) {
+    where.createdById = userId;
+  }
+
+  const existing = await prisma.testCase.findFirst({
+    where,
+    include: {
+      steps: true,
+    },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // Generate new sequential TestCaseId
+    const count = await tx.testCase.count();
+    const year = new Date().getFullYear();
+    const newTestCaseId = `TC-${year}-${(count + 1)
+      .toString()
+      .padStart(5, "0")}`;
+
+    // Create cloned test case
+    const cloned = await tx.testCase.create({
+      data: {
+        testCaseId: newTestCaseId,
+        title: existing.title + " (Clone)",
+        description: existing.description,
+        module: existing.module,
+        priority: existing.priority,
+        severity: existing.severity,
+        type: existing.type,
+        status: "DRAFT", // Reset to draft
+        preConditions: existing.preConditions,
+        testDataRequirements: existing.testDataRequirements,
+        environmentRequirements: existing.environmentRequirements,
+        postConditions: existing.postConditions,
+        cleanupSteps: existing.cleanupSteps,
+        estimatedDuration: existing.estimatedDuration,
+        automationStatus: existing.automationStatus,
+        automationScriptLink: existing.automationScriptLink,
+        tags: existing.tags,
+        version: 1, // 🔑 Reset version
+        createdById: userId, // 🔑 New creator
+
+        steps: {
+          create: existing.steps.map((step) => ({
+            stepNumber: step.stepNumber,
+            action: step.action,
+            testData: step.testData,
+            expectedResult: step.expectedResult,
+          })),
+        },
+      },
+      include: {
+        steps: {
+          orderBy: { stepNumber: "asc" },
+        },
+      },
+    });
+
+    return cloned;
+  });
+}
