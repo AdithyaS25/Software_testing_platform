@@ -10,9 +10,9 @@ import {
   listTestCases,
   getTestCaseById,
   updateTestCase,
-  cloneTestCase
+  cloneTestCase,
+  deleteTestCase
 } from "./testCase.service";
-
 
 /* ============================
    CREATE TEST CASE (FR-TC-001)
@@ -180,5 +180,36 @@ export async function cloneTestCaseController(
   return res.status(201).json({
     message: "Test case cloned successfully",
     data: cloned,
+  });
+}
+
+/* ============================
+   DELETE TEST CASE (FR-TC-004)
+   ============================ */
+
+export async function deleteTestCaseController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    return res.status(400).json({ message: "Invalid test case id" });
+  }
+
+  const deleted = await deleteTestCase(
+    id,
+    req.user.id,
+    req.user.role
+  );
+
+  if (!deleted) {
+    return res.status(404).json({
+      message: "Test case not found",
+    });
+  }
+
+  return res.status(200).json({
+    message: "Test case archived successfully",
   });
 }

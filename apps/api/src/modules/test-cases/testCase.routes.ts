@@ -7,6 +7,7 @@ import {
   getTestCaseByIdController,
   updateTestCaseController,
   cloneTestCaseController,
+  deleteTestCaseController,
 } from "./testCase.controller";
 
 const router: Router = Router();
@@ -27,6 +28,12 @@ router.post(
   "/:id/clone",
   asHandler(authenticate),
   asHandler(cloneTestCaseController)
+);
+
+router.delete(
+  "/:id",
+  asHandler(authenticate),
+  asHandler(deleteTestCaseController)
 );
 
 router.get(
