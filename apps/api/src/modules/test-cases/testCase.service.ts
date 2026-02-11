@@ -311,3 +311,34 @@ export async function cloneTestCase(
     return cloned;
   });
 }
+
+/* ============================
+   DELETE TEST CASE (FR-TC-004)
+   ============================ */
+
+export async function deleteTestCase(
+  id: string,
+  userId: string,
+  role: UserRole
+) {
+  const where: any = { id };
+
+  // 🔐 Testers can delete only their own test cases
+  if (role === UserRole.TESTER) {
+    where.createdById = userId;
+  }
+
+  const existing = await prisma.testCase.findFirst({ where });
+
+  if (!existing) {
+    return null;
+  }
+
+  // Soft delete → set status to ARCHIVED
+  return prisma.testCase.update({
+    where: { id },
+    data: {
+      status: TestCaseStatus.ARCHIVED,
+    },
+  });
+}
