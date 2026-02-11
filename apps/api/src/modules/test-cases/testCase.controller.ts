@@ -3,12 +3,16 @@ import { AuthenticatedRequest } from "../../types/auth-request";
 import {
   createTestCaseSchema,
   listTestCasesQuerySchema,
+  updateTestCaseSchema
 } from "./testCase.schema";
 import {
   createTestCase,
   listTestCases,
   getTestCaseById,
+  updateTestCase,
+  cloneTestCase
 } from "./testCase.service";
+
 
 /* ============================
    CREATE TEST CASE (FR-TC-001)
@@ -113,9 +117,6 @@ export async function getTestCaseByIdController(
    UPDATE TEST CASE (FR-TC-002)
    ============================ */
 
-import { updateTestCaseSchema } from "./testCase.schema";
-import { updateTestCase } from "./testCase.service";
-
 export async function updateTestCaseController(
   req: AuthenticatedRequest,
   res: Response
@@ -149,5 +150,35 @@ export async function updateTestCaseController(
   return res.status(200).json({
     message: "Test case updated successfully",
     data: updated,
+  });
+}
+
+/* ============================
+   CLONE TEST CASE (FR-TC-003)
+   ============================ */
+
+export async function cloneTestCaseController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    return res.status(400).json({ message: "Invalid test case id" });
+  }
+
+  const cloned = await cloneTestCase(
+    id,
+    req.user.id,
+    req.user.role
+  );
+
+  if (!cloned) {
+    return res.status(404).json({ message: "Test case not found" });
+  }
+
+  return res.status(201).json({
+    message: "Test case cloned successfully",
+    data: cloned,
   });
 }

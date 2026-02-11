@@ -6,6 +6,7 @@ import {
   listTestCasesController,
   getTestCaseByIdController,
   updateTestCaseController,
+  cloneTestCaseController,
 } from "./testCase.controller";
 
 const router: Router = Router();
@@ -20,6 +21,12 @@ router.get(
   "/",
   asHandler(authenticate),
   asHandler(listTestCasesController)
+);
+
+router.post(
+  "/:id/clone",
+  asHandler(authenticate),
+  asHandler(cloneTestCaseController)
 );
 
 router.get(
