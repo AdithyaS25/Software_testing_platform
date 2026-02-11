@@ -108,3 +108,46 @@ export async function getTestCaseByIdController(
     data: testCase,
   });
 }
+
+/* ============================
+   UPDATE TEST CASE (FR-TC-002)
+   ============================ */
+
+import { updateTestCaseSchema } from "./testCase.schema";
+import { updateTestCase } from "./testCase.service";
+
+export async function updateTestCaseController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    return res.status(400).json({ message: "Invalid test case id" });
+  }
+
+  const parsed = updateTestCaseSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: "Invalid request body",
+      errors: parsed.error.flatten(),
+    });
+  }
+
+  const updated = await updateTestCase(
+    id,
+    parsed.data,
+    req.user.id,
+    req.user.role
+  );
+
+  if (!updated) {
+    return res.status(404).json({ message: "Test case not found" });
+  }
+
+  return res.status(200).json({
+    message: "Test case updated successfully",
+    data: updated,
+  });
+}
