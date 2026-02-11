@@ -5,6 +5,8 @@ import {
   TestCaseStatus,
   UserRole,
 } from "@prisma/client";
+import { UpdateTestCaseInput } from "./testCase.schema";
+
 
 /* ============================
    CREATE TEST CASE (FR-TC-001)
@@ -161,5 +163,73 @@ export async function getTestCaseById(
         orderBy: { stepNumber: "asc" },
       },
     },
+  });
+}
+
+/* ============================
+   UPDATE TEST CASE (FR-TC-002)
+   ============================ */
+export async function updateTestCase(
+  id: string,
+  data: UpdateTestCaseInput,
+  userId: string,
+  role: UserRole
+) {
+  const where: any = { id };
+
+  // 🔐 Testers can edit only their own test cases
+  if (role === UserRole.TESTER) {
+    where.createdById = userId;
+  }
+
+  const existing = await prisma.testCase.findFirst({
+    where,
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // If steps provided → replace them
+    if (data.steps) {
+      await tx.testStep.deleteMany({
+        where: { testCaseId: id },
+      });
+
+      await tx.testStep.createMany({
+        data: data.steps.map((step) => ({
+          testCaseId: id,
+          stepNumber: step.stepNumber,
+          action: step.action,
+          testData: step.testData ?? null,
+          expectedResult: step.expectedResult,
+        })),
+      });
+    }
+
+    const updateData: any = {};
+
+// Only assign defined fields
+for (const key in data) {
+  if (data[key as keyof UpdateTestCaseInput] !== undefined && key !== "steps") {
+    updateData[key] = data[key as keyof UpdateTestCaseInput];
+  }
+}
+
+// Always increment version
+updateData.version = { increment: 1 };
+
+const updated = await tx.testCase.update({
+  where: { id },
+  data: updateData,
+  include: {
+    steps: {
+      orderBy: { stepNumber: "asc" },
+    },
+  },
+});
+
+    return updated;
   });
 }

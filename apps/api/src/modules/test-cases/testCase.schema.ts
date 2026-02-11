@@ -81,3 +81,63 @@ export const listTestCasesQuerySchema = z.object({
 export type ListTestCasesQuery = z.infer<
   typeof listTestCasesQuerySchema
 >;
+
+/* ============================
+   UPDATE TEST CASE (FR-TC-002)
+   ============================ */
+
+export const updateTestCaseSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().min(1).optional(),
+
+  module: z.string().min(1).optional(),
+
+  priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).optional(),
+  severity: z.enum(["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "TRIVIAL"]).optional(),
+  type: z.enum([
+    "FUNCTIONAL",
+    "REGRESSION",
+    "SMOKE",
+    "INTEGRATION",
+    "UAT",
+    "PERFORMANCE",
+    "SECURITY",
+    "USABILITY",
+  ]).optional(),
+  status: z.enum([
+    "DRAFT",
+    "READY_FOR_REVIEW",
+    "APPROVED",
+    "DEPRECATED",
+    "ARCHIVED",
+  ]).optional(),
+
+  preConditions: z.string().optional(),
+  testDataRequirements: z.string().optional(),
+  environmentRequirements: z.string().optional(),
+  postConditions: z.string().optional(),
+  cleanupSteps: z.string().optional(),
+
+  estimatedDuration: z.number().int().positive().optional(),
+
+  automationStatus: z.enum([
+    "NOT_AUTOMATED",
+    "IN_PROGRESS",
+    "AUTOMATED",
+    "CANNOT_AUTOMATE",
+  ]).optional(),
+  automationScriptLink: z.string().url().optional(),
+
+  tags: z.array(z.string()).optional(),
+
+  steps: z.array(
+    z.object({
+      stepNumber: z.number().int().positive(),
+      action: z.string().min(1),
+      testData: z.string().optional(),
+      expectedResult: z.string().min(1),
+    })
+  ).optional(),
+});
+
+export type UpdateTestCaseInput = z.infer<typeof updateTestCaseSchema>;

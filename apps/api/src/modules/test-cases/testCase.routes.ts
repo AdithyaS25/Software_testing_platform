@@ -4,8 +4,9 @@ import { asHandler } from "../../utils/async-handler";
 import {
   createTestCaseController,
   listTestCasesController,
+  getTestCaseByIdController,
+  updateTestCaseController,
 } from "./testCase.controller";
-import { getTestCaseByIdController } from "./testCase.controller";
 
 const router: Router = Router();
 
@@ -25,6 +26,12 @@ router.get(
   "/:id",
   asHandler(authenticate),
   asHandler(getTestCaseByIdController)
+);
+
+router.put(
+  "/:id",
+  asHandler(authenticate),
+  asHandler(updateTestCaseController)
 );
 
 export default router;
