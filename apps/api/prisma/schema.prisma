@@ -31,6 +31,7 @@ model User {
   passwordHistory     PasswordHistory[]
 
   testCases TestCase[]
+  executions Execution[] @relation("UserExecutions")
 }
 
 model RefreshToken {
@@ -97,6 +98,8 @@ model TestCase {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  executions Execution[]
 }
 
 model TestStep {
@@ -151,6 +154,54 @@ enum AutomationStatus {
   IN_PROGRESS
   AUTOMATED
   CANNOT_AUTOMATE
+}
+
+model Execution {
+  id           String            @id @default(uuid())
+  testCaseId   String
+  testCase     TestCase          @relation(fields: [testCaseId], references: [id])
+  executedById String
+  executedBy   User @relation("UserExecutions", fields: [executedById], references: [id])
+
+  status       ExecutionStatus   @default(IN_PROGRESS)
+  overallResult StepStatus?
+
+  startedAt    DateTime          @default(now())
+  completedAt  DateTime?
+
+  steps        ExecutionStep[]
+
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model ExecutionStep {
+  id            String      @id @default(uuid())
+  executionId   String
+  execution     Execution   @relation(fields: [executionId], references: [id])
+
+  stepNumber    Int
+  action        String
+  expectedResult String
+
+  actualResult  String?
+  status        StepStatus?
+  notes         String?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+enum ExecutionStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum StepStatus {
+  PASS
+  FAIL
+  BLOCKED
+  SKIPPED
 }
 
 
