@@ -9,6 +9,8 @@ import executionRoutes from "./modules/execution/execution.routes";
 
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
+import testRunRoutes from "./modules/test-run/testRun.routes";
+
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -26,6 +28,7 @@ app.use(cookieParser());
 app.use("/auth", authRoutes);
 app.use("/test-cases", testCaseRoutes);
 app.use("/executions", executionRoutes);
+app.use("/test-runs", testRunRoutes);
 
 /* =======================
    HEALTH CHECK
