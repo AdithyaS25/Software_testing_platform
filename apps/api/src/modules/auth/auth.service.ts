@@ -1,5 +1,5 @@
-import { prisma } from "../prisma";
-import { signAccessToken, verifyRefreshToken } from "../utils/jwt";
+import { prisma } from "../../prisma";
+import { signAccessToken, verifyRefreshToken } from "../../utils/jwt";
 
 export async function refreshAccessToken(refreshToken: string) {
   // 1. Verify JWT signature
