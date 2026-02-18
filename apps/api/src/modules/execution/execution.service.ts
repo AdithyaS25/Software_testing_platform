@@ -59,9 +59,9 @@ export const updateExecutionService = async (
   for (const step of steps) {
   const updateData: any = {};
 
-  if (step.status !== undefined) {
-    updateData.status = step.status;
-  }
+  if (step.status && step.status !== "") {
+  updateData.status = step.status;
+}
 
   if (step.actualResult !== undefined) {
     updateData.actualResult = step.actualResult;
