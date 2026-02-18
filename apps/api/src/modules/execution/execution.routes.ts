@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate } from "../../auth/auth.middleware";
+import { authenticate } from "../auth/auth.middleware";
 import { asHandler } from "../../utils/async-handler";
 import {
   createExecutionController,
@@ -9,17 +9,103 @@ import {
 
 const router: Router = Router();
 
+/**
+ * @openapi
+ * /executions:
+ *   post:
+ *     summary: Create execution from test case
+ *     tags:
+ *       - Execution
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - testCaseId
+ *             properties:
+ *               testCaseId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Execution created successfully
+ */
+
 router.post(
   "/",
   asHandler(authenticate),
   asHandler(createExecutionController)
 );
 
+/**
+ * @openapi
+ * /executions/{id}:
+ *   patch:
+ *     summary: Update execution steps
+ *     tags:
+ *       - Execution
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               steps:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       enum: [PASS, FAIL, BLOCKED]
+ *                     actualResult:
+ *                       type: string
+ *                     notes:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: Execution updated successfully
+ */
+
 router.patch(
   "/:id",
   asHandler(authenticate),
   asHandler(updateExecutionController)
 );
+
+/**
+ * @openapi
+ * /executions/{id}/complete:
+ *   post:
+ *     summary: Complete execution and compute overall result
+ *     tags:
+ *       - Execution
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Execution completed
+ */
 
 router.post(
   "/:id/complete",

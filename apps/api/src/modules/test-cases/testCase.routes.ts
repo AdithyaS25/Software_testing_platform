@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate } from "../../auth/auth.middleware";
+import { authenticate } from "../auth/auth.middleware";
 import { asHandler } from "../../utils/async-handler";
 import {
   createTestCaseController,
