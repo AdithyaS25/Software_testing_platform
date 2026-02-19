@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
-import { createTestRunService, getAllTestRunsService } from "./testRun.service";
-
+import { createTestRunService, getAllTestRunsService, assignTestRunCaseService } from "./testRun.service";
 
 export const createTestRunController = async (
   req: Request,
@@ -32,4 +31,18 @@ export const getAllTestRunsController = async (
 ) => {
   const runs = await getAllTestRunsService();
   res.json(runs);
+};
+
+export const assignTestRunCaseController = async (
+  req: Request,
+  res: Response
+) => {
+  const { testRunTestCaseId, assignedToId } = req.body;
+
+  const updated = await assignTestRunCaseService(
+    testRunTestCaseId,
+    assignedToId
+  );
+
+  res.json(updated);
 };

@@ -47,3 +47,15 @@ export const getAllTestRunsService = async () => {
   });
 };
 
+export const assignTestRunCaseService = async (
+  testRunTestCaseId: string,
+  assignedToId: string
+) => {
+  return prisma.testRunTestCase.update({
+    where: { id: testRunTestCaseId },
+    data: {
+      assignedToId,
+    },
+  });
+};
+

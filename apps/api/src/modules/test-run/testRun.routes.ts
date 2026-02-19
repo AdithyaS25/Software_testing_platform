@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../auth/auth.middleware";
 import { asHandler } from "../../utils/async-handler";
-import { createTestRunController, getAllTestRunsController } from "./testRun.controller";
+import { assignTestRunCaseController, createTestRunController, getAllTestRunsController } from "./testRun.controller";
 
 const router: Router = Router();
 
@@ -67,6 +67,39 @@ router.get(
   "/",
   asHandler(authenticate),
   asHandler(getAllTestRunsController)
+);
+
+/**
+ * @openapi
+ * /test-runs/assign:
+ *   patch:
+ *     summary: Assign a tester to a test case inside a test run
+ *     tags:
+ *       - Test Run
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - testRunTestCaseId
+ *               - assignedToId
+ *             properties:
+ *               testRunTestCaseId:
+ *                 type: string
+ *               assignedToId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Assignment updated successfully
+ */
+router.patch(
+  "/assign",
+  asHandler(authenticate),
+  asHandler(assignTestRunCaseController)
 );
 
 export default router;
