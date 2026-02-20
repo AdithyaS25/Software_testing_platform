@@ -1,8 +1,13 @@
 import { Router } from "express";
-import { authenticate } from "../auth/auth.middleware";
+import { UserRole } from "@prisma/client";
+import { authenticate, authorize } from "../auth/auth.middleware";
 import { asHandler } from "../../utils/async-handler";
-import { assignTestRunCaseController, createTestRunController, getAllTestRunsController, getTestRunByIdController } from "./testRun.controller";
-import { getTestRunByIdService } from "./testRun.service";
+import {
+  assignTestRunCaseController,
+  createTestRunController,
+  getAllTestRunsController,
+  getTestRunByIdController,
+} from "./testRun.controller";
 
 const router: Router = Router();
 
@@ -48,6 +53,7 @@ const router: Router = Router();
 router.post(
   "/",
   asHandler(authenticate),
+  asHandler(authorize([UserRole.ADMIN, UserRole.DEVELOPER])),
   asHandler(createTestRunController)
 );
 
@@ -67,6 +73,13 @@ router.post(
 router.get(
   "/",
   asHandler(authenticate),
+  asHandler(
+    authorize([
+      UserRole.ADMIN,
+      UserRole.DEVELOPER,
+      UserRole.TESTER,
+    ])
+  ),
   asHandler(getAllTestRunsController)
 );
 
@@ -92,6 +105,13 @@ router.get(
 router.get(
   "/:id",
   asHandler(authenticate),
+  asHandler(
+    authorize([
+      UserRole.ADMIN,
+      UserRole.DEVELOPER,
+      UserRole.TESTER,
+    ])
+  ),
   asHandler(getTestRunByIdController)
 );
 
@@ -125,6 +145,7 @@ router.get(
 router.patch(
   "/assign",
   asHandler(authenticate),
+  asHandler(authorize([UserRole.ADMIN, UserRole.DEVELOPER])),
   asHandler(assignTestRunCaseController)
 );
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { authenticate } from "../auth/auth.middleware";
+import { UserRole } from "@prisma/client";
+import { authenticate, authorize } from "../auth/auth.middleware";
 import { asHandler } from "../../utils/async-handler";
 import {
   createExecutionController,
@@ -33,10 +34,10 @@ const router: Router = Router();
  *       201:
  *         description: Execution created successfully
  */
-
 router.post(
   "/",
   asHandler(authenticate),
+  asHandler(authorize([UserRole.TESTER])),
   asHandler(createExecutionController)
 );
 
@@ -80,10 +81,10 @@ router.post(
  *       200:
  *         description: Execution updated successfully
  */
-
 router.patch(
   "/:id",
   asHandler(authenticate),
+  asHandler(authorize([UserRole.TESTER])),
   asHandler(updateExecutionController)
 );
 
@@ -106,10 +107,10 @@ router.patch(
  *       200:
  *         description: Execution completed
  */
-
 router.post(
   "/:id/complete",
   asHandler(authenticate),
+  asHandler(authorize([UserRole.TESTER])),
   asHandler(completeExecutionController)
 );
 
