@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { authenticate } from "../auth/auth.middleware";
 import { asHandler } from "../../utils/async-handler";
-import { assignTestRunCaseController, createTestRunController, getAllTestRunsController } from "./testRun.controller";
+import { assignTestRunCaseController, createTestRunController, getAllTestRunsController, getTestRunByIdController } from "./testRun.controller";
+import { getTestRunByIdService } from "./testRun.service";
 
 const router: Router = Router();
 
@@ -67,6 +68,31 @@ router.get(
   "/",
   asHandler(authenticate),
   asHandler(getAllTestRunsController)
+);
+
+/**
+ * @openapi
+ * /test-runs/{id}:
+ *   get:
+ *     summary: Get test run by ID
+ *     tags:
+ *       - Test Run
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Test run details
+ */
+router.get(
+  "/:id",
+  asHandler(authenticate),
+  asHandler(getTestRunByIdController)
 );
 
 /**

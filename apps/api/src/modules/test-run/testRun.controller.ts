@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createTestRunService, getAllTestRunsService, assignTestRunCaseService } from "./testRun.service";
+import { createTestRunService, getAllTestRunsService, assignTestRunCaseService, getTestRunByIdService } from "./testRun.service";
 
 export const createTestRunController = async (
   req: Request,
@@ -45,4 +45,22 @@ export const assignTestRunCaseController = async (
   );
 
   res.json(updated);
+};
+
+export const getTestRunByIdController = async (
+  req: Request,
+  res: Response
+) => {
+  const id = req.params.id as string;
+
+if (!id) {
+  return res.status(400).json({ message: "Test Run ID is required" });
+}
+
+const run = await getTestRunByIdService(id);
+  if (!run) {
+    return res.status(404).json({ message: "Test Run not found" });
+  }
+
+  res.json(run);
 };

@@ -34,7 +34,7 @@ export const createTestRunService = async (
 };
 
 export const getAllTestRunsService = async () => {
-  return prisma.testRun.findMany({
+  const runs = await prisma.testRun.findMany({
     include: {
       testCases: {
         include: {
@@ -44,6 +44,20 @@ export const getAllTestRunsService = async () => {
       },
       createdBy: true,
     },
+  });
+
+  return runs.map((run) => {
+    const total = run.testCases.length;
+    const completed = run.testCases.filter(
+      (tc) => tc.status === "COMPLETED"
+    ).length;
+
+    const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+    return {
+      ...run,
+      progress,
+    };
   });
 };
 
@@ -57,5 +71,34 @@ export const assignTestRunCaseService = async (
       assignedToId,
     },
   });
+};
+
+export const getTestRunByIdService = async (id: string) => {
+  const run = await prisma.testRun.findUnique({
+    where: { id },
+    include: {
+      testCases: {
+        include: {
+          testCase: true,
+          assignedTo: true,
+        },
+      },
+      createdBy: true,
+    },
+  });
+
+  if (!run) return null;
+
+  const total = run.testCases.length;
+  const completed = run.testCases.filter(
+    (tc) => tc.status === "COMPLETED"
+  ).length;
+
+  const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+  return {
+    ...run,
+    progress,
+  };
 };
 

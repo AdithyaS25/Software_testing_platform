@@ -115,5 +115,42 @@ export const completeExecutionService = async (executionId: string) => {
     include: { steps: true },
   });
 
+  // After marking execution completed
+
+// Find related TestRunTestCase
+const testRunCases = await prisma.testRunTestCase.findMany({
+  where: {
+    testCaseId: execution.testCaseId,
+  },
+});
+
+// Mark them as COMPLETED
+for (const trc of testRunCases) {
+  await prisma.testRunTestCase.update({
+    where: { id: trc.id },
+    data: { status: "COMPLETED" },
+  });
+}
+
+// Check if TestRun should be completed
+for (const trc of testRunCases) {
+  const runCases = await prisma.testRunTestCase.findMany({
+    where: { testRunId: trc.testRunId },
+  });
+
+  const allCompleted = runCases.every(
+    (rc) => rc.status === "COMPLETED"
+  );
+
+  if (allCompleted) {
+    await prisma.testRun.update({
+      where: { id: trc.testRunId },
+      data: { status: "COMPLETED" },
+    });
+  }
+}
+
   return completedExecution;
 };
+
+
