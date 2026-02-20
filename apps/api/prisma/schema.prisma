@@ -13,10 +13,10 @@ enum UserRole {
 }
 
 model User {
-  id           String @id @default(uuid())
-  email        String @unique
+  id           String   @id @default(uuid())
+  email        String   @unique
   passwordHash String
-  role UserRole @default(TESTER)
+  role         UserRole @default(TESTER)
 
   failedLoginAttempts Int       @default(0)
   lockUntil           DateTime?
@@ -30,8 +30,11 @@ model User {
   passwordResetTokens PasswordResetToken[]
   passwordHistory     PasswordHistory[]
 
-  testCases TestCase[]
+  testCases  TestCase[]
   executions Execution[] @relation("UserExecutions")
+
+  testRunsCreated  TestRun[]
+  assignedRunCases TestRunTestCase[]
 }
 
 model RefreshToken {
@@ -96,10 +99,11 @@ model TestCase {
 
   steps TestStep[]
 
+  executions   Execution[]
+  testRunCases TestRunTestCase[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  executions Execution[]
 }
 
 model TestStep {
@@ -113,6 +117,49 @@ model TestStep {
   expectedResult String
 
   createdAt DateTime @default(now())
+}
+
+model TestRun {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  status      TestRunStatus @default(PLANNED)
+
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
+
+  testCases TestRunTestCase[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model TestRunTestCase {
+  id String @id @default(uuid())
+
+  testRun   TestRun @relation(fields: [testRunId], references: [id])
+  testRunId String
+
+  testCase   TestCase @relation(fields: [testCaseId], references: [id])
+  testCaseId String
+
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
+  assignedToId String?
+
+  status TestRunCaseStatus @default(PENDING)
+}
+
+enum TestRunStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TestRunCaseStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
 }
 
 enum TestCasePriority {
@@ -157,39 +204,39 @@ enum AutomationStatus {
 }
 
 model Execution {
-  id           String            @id @default(uuid())
+  id           String   @id @default(uuid())
   testCaseId   String
-  testCase     TestCase          @relation(fields: [testCaseId], references: [id])
+  testCase     TestCase @relation(fields: [testCaseId], references: [id])
   executedById String
-  executedBy   User @relation("UserExecutions", fields: [executedById], references: [id])
+  executedBy   User     @relation("UserExecutions", fields: [executedById], references: [id])
 
-  status       ExecutionStatus   @default(IN_PROGRESS)
+  status        ExecutionStatus @default(IN_PROGRESS)
   overallResult StepStatus?
 
-  startedAt    DateTime          @default(now())
-  completedAt  DateTime?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
 
-  steps        ExecutionStep[]
+  steps ExecutionStep[]
 
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ExecutionStep {
-  id            String      @id @default(uuid())
-  executionId   String
-  execution     Execution   @relation(fields: [executionId], references: [id])
+  id          String    @id @default(uuid())
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id])
 
-  stepNumber    Int
-  action        String
+  stepNumber     Int
+  action         String
   expectedResult String
 
-  actualResult  String?
-  status        StepStatus?
-  notes         String?
+  actualResult String?
+  status       StepStatus?
+  notes        String?
 
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum ExecutionStatus {
@@ -203,5 +250,3 @@ enum StepStatus {
   BLOCKED
   SKIPPED
 }
-
-
