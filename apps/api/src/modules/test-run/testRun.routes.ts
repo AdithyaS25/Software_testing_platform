@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { UserRole } from "@prisma/client";
-import { authenticate, authorize } from "../auth/auth.middleware";
+import { authenticate, authorize } from "../../middleware/auth.middleware";
 import { asHandler } from "../../utils/async-handler";
 import {
   assignTestRunCaseController,
