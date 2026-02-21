@@ -1,3 +1,4 @@
+import { prisma } from "../../prisma";
 import { Request, Response } from "express";
 import {
   createExecutionService,
@@ -64,4 +65,31 @@ if (!executionId || typeof executionId !== "string") {
   );
 
   return res.status(200).json(completedExecution);
+};
+
+
+export const uploadExecutionEvidenceController = async (
+  req: Request,
+  res: Response
+) => {
+  const stepIdParam = req.params.stepId;
+
+if (!stepIdParam || Array.isArray(stepIdParam)) {
+  return res.status(400).json({ message: "Invalid stepId" });
+}
+
+const stepId: string = stepIdParam;
+
+  if (!req.file) {
+    return res.status(400).json({ message: "File is required" });
+  }
+
+  const updatedStep = await prisma.executionStep.update({
+    where: { id: stepId },
+    data: {
+      evidenceUrl: `/uploads/${req.file.filename}`,
+    },
+  });
+
+  return res.status(200).json(updatedStep);
 };

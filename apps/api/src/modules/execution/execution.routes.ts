@@ -6,7 +6,9 @@ import {
   createExecutionController,
   updateExecutionController,
   completeExecutionController,
+  uploadExecutionEvidenceController,
 } from "./execution.controller";
+import { upload } from "../../middleware/upload.middleware";
 
 const router: Router = Router();
 
@@ -112,6 +114,47 @@ router.post(
   asHandler(authenticate),
   asHandler(authorize([UserRole.TESTER])),
   asHandler(completeExecutionController)
+);
+
+/**
+ * @openapi
+ * /executions/{executionId}/steps/{stepId}/evidence:
+ *   post:
+ *     summary: Upload evidence for execution step
+ *     tags:
+ *       - Execution
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: executionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: stepId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Evidence uploaded successfully
+ */
+router.post(
+  "/:executionId/steps/:stepId/evidence",
+  asHandler(authenticate),
+  upload.single("file"),
+  asHandler(uploadExecutionEvidenceController)
 );
 
 export default router;
