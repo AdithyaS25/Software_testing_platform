@@ -1,5 +1,5 @@
 import { Response, NextFunction } from "express";
-import { AuthenticatedRequest } from "../../types/auth-request";
+import { AuthenticatedRequest } from "../types/auth-request";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { UserRole } from "@prisma/client";
 

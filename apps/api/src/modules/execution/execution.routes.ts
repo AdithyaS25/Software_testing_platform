@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { UserRole } from "@prisma/client";
-import { authenticate, authorize } from "../auth/auth.middleware";
+import { authenticate, authorize } from "../../middleware/auth.middleware";
 import { asHandler } from "../../utils/async-handler";
 import {
   createExecutionController,
   updateExecutionController,
   completeExecutionController,
+  uploadExecutionEvidenceController,
 } from "./execution.controller";
+import { uploadEvidence } from "../../middleware/uploadEvidence";
 
 const router: Router = Router();
 
@@ -112,6 +114,52 @@ router.post(
   asHandler(authenticate),
   asHandler(authorize([UserRole.TESTER])),
   asHandler(completeExecutionController)
+);
+
+/**
+ * @openapi
+ * /executions/{executionId}/steps/{stepId}/evidence:
+ *   post:
+ *     summary: Upload evidence for execution step
+ *     tags:
+ *       - Execution
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: executionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: stepId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Evidence uploaded successfully
+ *       400:
+ *         description: Validation error
+ *       403:
+ *         description: Forbidden
+ */
+router.post(
+  "/:executionId/steps/:stepId/evidence",
+  asHandler(authenticate),
+  asHandler(authorize([UserRole.TESTER])),
+  uploadEvidence.single("file"),
+  asHandler(uploadExecutionEvidenceController)
 );
 
 export default router;
