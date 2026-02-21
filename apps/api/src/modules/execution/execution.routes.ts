@@ -8,7 +8,7 @@ import {
   completeExecutionController,
   uploadExecutionEvidenceController,
 } from "./execution.controller";
-import { upload } from "../../middleware/upload.middleware";
+import { uploadEvidence } from "../../middleware/uploadEvidence";
 
 const router: Router = Router();
 
@@ -149,11 +149,16 @@ router.post(
  *     responses:
  *       200:
  *         description: Evidence uploaded successfully
+ *       400:
+ *         description: Validation error
+ *       403:
+ *         description: Forbidden
  */
 router.post(
   "/:executionId/steps/:stepId/evidence",
   asHandler(authenticate),
-  upload.single("file"),
+  asHandler(authorize([UserRole.TESTER])),
+  uploadEvidence.single("file"),
   asHandler(uploadExecutionEvidenceController)
 );
 

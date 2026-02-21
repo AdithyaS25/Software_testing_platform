@@ -49,3 +49,4 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
 });
+

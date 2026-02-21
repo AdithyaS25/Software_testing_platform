@@ -6,35 +6,23 @@ datasource db {
   provider = "postgresql"
 }
 
-enum UserRole {
-  TESTER
-  DEVELOPER
-  ADMIN
-}
-
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  role         UserRole @default(TESTER)
-
-  failedLoginAttempts Int       @default(0)
+  id                  String               @id @default(uuid())
+  email               String               @unique
+  passwordHash        String
+  failedLoginAttempts Int                  @default(0)
   lockUntil           DateTime?
   lastLoginAt         DateTime?
-
-  refreshTokens RefreshToken[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  passwordResetTokens PasswordResetToken[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @default(now()) @updatedAt
+  role                UserRole             @default(TESTER)
+  executions          Execution[]          @relation("UserExecutions")
   passwordHistory     PasswordHistory[]
-
-  testCases  TestCase[]
-  executions Execution[] @relation("UserExecutions")
-
-  testRunsCreated  TestRun[]
-  assignedRunCases TestRunTestCase[]
+  passwordResetTokens PasswordResetToken[]
+  refreshTokens       RefreshToken[]
+  testCases           TestCase[]
+  testRunsCreated     TestRun[]
+  assignedRunCases    TestRunTestCase[]
 }
 
 model RefreshToken {
@@ -46,8 +34,7 @@ model RefreshToken {
   createdAt DateTime  @default(now())
   userAgent String?
   ipAddress String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PasswordResetToken {
@@ -56,8 +43,7 @@ model PasswordResetToken {
   userId    String
   expiresAt DateTime
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PasswordHistory {
@@ -65,89 +51,108 @@ model PasswordHistory {
   userId    String
   hash      String
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model TestCase {
-  id          String @id @default(uuid())
-  testCaseId  String @unique
-  title       String @db.VarChar(200)
-  description String
-
-  module   String
-  priority TestCasePriority
-  severity TestCaseSeverity
-  type     TestCaseType
-  status   TestCaseStatus
-
+  id                      String            @id @default(uuid())
+  testCaseId              String            @unique
+  title                   String            @db.VarChar(200)
+  description             String
+  module                  String
+  priority                TestCasePriority
+  severity                TestCaseSeverity
+  type                    TestCaseType
+  status                  TestCaseStatus
   preConditions           String?
   testDataRequirements    String?
   environmentRequirements String?
   postConditions          String?
   cleanupSteps            String?
-
-  estimatedDuration    Int?
-  automationStatus     AutomationStatus
-  automationScriptLink String?
-
-  tags    String[]
-  version Int      @default(1)
-
-  createdById String
-  createdBy   User   @relation(fields: [createdById], references: [id])
-
-  steps TestStep[]
-
-  executions   Execution[]
-  testRunCases TestRunTestCase[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  estimatedDuration       Int?
+  automationStatus        AutomationStatus
+  automationScriptLink    String?
+  tags                    String[]
+  version                 Int               @default(1)
+  createdById             String
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  executions              Execution[]
+  createdBy               User              @relation(fields: [createdById], references: [id])
+  testRunCases            TestRunTestCase[]
+  steps                   TestStep[]
 }
 
 model TestStep {
-  id         String   @id @default(uuid())
-  testCaseId String
-  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
-
+  id             String   @id @default(uuid())
+  testCaseId     String
   stepNumber     Int
   action         String
   testData       String?
   expectedResult String
-
-  createdAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  testCase       TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
 }
 
 model TestRun {
-  id          String        @id @default(uuid())
+  id          String            @id @default(uuid())
   name        String
   description String?
   startDate   DateTime
   endDate     DateTime
-  status      TestRunStatus @default(PLANNED)
-
-  createdBy   User   @relation(fields: [createdById], references: [id])
+  status      TestRunStatus     @default(PLANNED)
   createdById String
-
-  testCases TestRunTestCase[]
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  createdBy   User              @relation(fields: [createdById], references: [id])
+  testCases   TestRunTestCase[]
 }
 
 model TestRunTestCase {
-  id String @id @default(uuid())
-
-  testRun   TestRun @relation(fields: [testRunId], references: [id])
-  testRunId String
-
-  testCase   TestCase @relation(fields: [testCaseId], references: [id])
-  testCaseId String
-
-  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
+  id           String            @id @default(uuid())
+  testRunId    String
+  testCaseId   String
   assignedToId String?
+  status       TestRunCaseStatus @default(PENDING)
+  assignedTo   User?             @relation(fields: [assignedToId], references: [id])
+  testCase     TestCase          @relation(fields: [testCaseId], references: [id])
+  testRun      TestRun           @relation(fields: [testRunId], references: [id])
+}
 
-  status TestRunCaseStatus @default(PENDING)
+model Execution {
+  id            String          @id @default(uuid())
+  testCaseId    String
+  executedById  String
+  status        ExecutionStatus @default(IN_PROGRESS)
+  overallResult StepStatus?
+  startedAt     DateTime        @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  executedBy    User            @relation("UserExecutions", fields: [executedById], references: [id])
+  testCase      TestCase        @relation(fields: [testCaseId], references: [id])
+  steps         ExecutionStep[]
+}
+
+model ExecutionStep {
+  id             String      @id @default(uuid())
+  executionId    String
+  stepNumber     Int
+  action         String
+  expectedResult String
+  actualResult   String?
+  status         StepStatus?
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  evidenceUrl    String?
+  execution      Execution   @relation(fields: [executionId], references: [id])
+}
+
+enum UserRole {
+  TESTER
+  DEVELOPER
+  ADMIN
 }
 
 enum TestRunStatus {
@@ -201,44 +206,6 @@ enum AutomationStatus {
   IN_PROGRESS
   AUTOMATED
   CANNOT_AUTOMATE
-}
-
-model Execution {
-  id           String   @id @default(uuid())
-  testCaseId   String
-  testCase     TestCase @relation(fields: [testCaseId], references: [id])
-  executedById String
-  executedBy   User     @relation("UserExecutions", fields: [executedById], references: [id])
-
-  status        ExecutionStatus @default(IN_PROGRESS)
-  overallResult StepStatus?
-
-  startedAt   DateTime  @default(now())
-  completedAt DateTime?
-
-  steps ExecutionStep[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model ExecutionStep {
-  id          String    @id @default(uuid())
-  executionId String
-  execution   Execution @relation(fields: [executionId], references: [id])
-
-  stepNumber     Int
-  action         String
-  expectedResult String
-
-  actualResult String?
-  status       StepStatus?
-  notes        String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  evidenceUrl String?   // file path or URL
 }
 
 enum ExecutionStatus {
