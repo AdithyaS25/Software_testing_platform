@@ -25,6 +25,7 @@ model User {
   assignedRunCases    TestRunTestCase[]
   assignedBugs        Bug[]
   resolvedBugs        Bug[]                 @relation("ResolvedBugs")
+  bugComments         BugComment[]
 }
 
 model RefreshToken {
@@ -188,6 +189,21 @@ model Bug {
   resolvedAt      DateTime?
   resolvedById    String?
   resolvedBy      User? @relation("ResolvedBugs", fields: [resolvedById], references: [id])
+  comments        BugComment[]
+}
+
+model BugComment {
+  id        String   @id @default(uuid())
+  content   String
+
+  bugId     String
+  bug       Bug      @relation(fields: [bugId], references: [id])
+
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum UserRole {

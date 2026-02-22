@@ -6,7 +6,11 @@ import { createBugController,
     updateBugStatusController, 
     getBugsController, 
     getMyBugsController,
-    assignBugController } from "./bug.controller";
+    assignBugController,
+    addBugCommentController,
+    getBugCommentsController,
+    updateBugCommentController,
+    deleteBugCommentController } from "./bug.controller";
 
 const router: Router = Router();
 
@@ -155,6 +159,126 @@ router.patch(
   asHandler(authenticate),
   asHandler(authorize([UserRole.TESTER])),
   asHandler(assignBugController)
+);
+
+/**
+ * @openapi
+ * /bugs/{id}/comments:
+ *   post:
+ *     summary: Add comment to bug
+ *     tags:
+ *       - Bug
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               content:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Comment added
+ */
+router.post(
+  "/:id/comments",
+  asHandler(authenticate),
+  asHandler(addBugCommentController)
+);
+
+/**
+ * @openapi
+ * /bugs/{id}/comments:
+ *   get:
+ *     summary: Get comments for bug
+ *     tags:
+ *       - Bug
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of comments
+ */
+router.get(
+  "/:id/comments",
+  asHandler(authenticate),
+  asHandler(getBugCommentsController)
+);
+
+/**
+ * @openapi
+ * /bugs/comments/{id}:
+ *   patch:
+ *     summary: Edit a bug comment (within 5 minutes)
+ *     tags:
+ *       - Bug
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Comment updated
+ */
+router.patch(
+  "/comments/:id",
+  asHandler(authenticate),
+  asHandler(updateBugCommentController)
+);
+
+/**
+ * @openapi
+ * /bugs/comments/{id}:
+ *   delete:
+ *     summary: Delete a bug comment (within 5 minutes)
+ *     tags:
+ *       - Bug
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Comment deleted
+ */
+router.delete(
+  "/comments/:id",
+  asHandler(authenticate),
+  asHandler(deleteBugCommentController)
 );
 
 export default router;

@@ -299,3 +299,178 @@ export const assignBugController = async (
     });
   }
 };
+
+export const addBugCommentController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const bugId = String(req.params.id);
+    const { content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({
+        message: "Comment content is required",
+      });
+    }
+
+    const bug = await prisma.bug.findUnique({
+      where: { id: bugId },
+    });
+
+    if (!bug) {
+      return res.status(404).json({
+        message: "Bug not found",
+      });
+    }
+
+    const comment = await prisma.bugComment.create({
+      data: {
+        content,
+        bugId,
+        authorId: req.user!.id,
+      },
+    });
+
+    return res.status(201).json(comment);
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: "Failed to add comment",
+    });
+  }
+};
+
+export const getBugCommentsController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const bugId = String(req.params.id);
+
+    const comments = await prisma.bugComment.findMany({
+      where: { bugId },
+      include: {
+        author: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    return res.status(200).json(comments);
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: "Failed to fetch comments",
+    });
+  }
+};
+
+export const updateBugCommentController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const commentId = String(req.params.id);
+    const { content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({
+        message: "Updated content is required",
+      });
+    }
+
+    const comment = await prisma.bugComment.findUnique({
+      where: { id: commentId },
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        message: "Comment not found",
+      });
+    }
+
+    // Author check
+    if (comment.authorId !== req.user!.id) {
+      return res.status(403).json({
+        message: "You can only edit your own comments",
+      });
+    }
+
+    // 5 minute rule
+    const FIVE_MINUTES = 5 * 60 * 1000;
+    const now = new Date().getTime();
+    const createdAt = new Date(comment.createdAt).getTime();
+
+    if (now - createdAt > FIVE_MINUTES) {
+      return res.status(403).json({
+        message: "Comment can only be edited within 5 minutes",
+      });
+    }
+
+    const updatedComment = await prisma.bugComment.update({
+      where: { id: commentId },
+      data: { content },
+    });
+
+    return res.status(200).json(updatedComment);
+  } catch {
+    return res.status(500).json({
+      message: "Failed to update comment",
+    });
+  }
+};
+
+export const deleteBugCommentController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const commentId = String(req.params.id);
+
+    const comment = await prisma.bugComment.findUnique({
+      where: { id: commentId },
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        message: "Comment not found",
+      });
+    }
+
+    // Author check
+    if (comment.authorId !== req.user!.id) {
+      return res.status(403).json({
+        message: "You can only delete your own comments",
+      });
+    }
+
+    // 5 minute rule
+    const FIVE_MINUTES = 5 * 60 * 1000;
+    const now = new Date().getTime();
+    const createdAt = new Date(comment.createdAt).getTime();
+
+    if (now - createdAt > FIVE_MINUTES) {
+      return res.status(403).json({
+        message: "Comment can only be deleted within 5 minutes",
+      });
+    }
+
+    await prisma.bugComment.delete({
+      where: { id: commentId },
+    });
+
+    return res.status(200).json({
+      message: "Comment deleted successfully",
+    });
+  } catch {
+    return res.status(500).json({
+      message: "Failed to delete comment",
+    });
+  }
+};
