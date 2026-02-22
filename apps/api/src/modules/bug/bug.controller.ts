@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../../prisma";
-import { BugStatus } from "@prisma/client";
 import { AuthenticatedRequest } from "../../types/auth-request";
+import { BugStatus, BugPriority, BugSeverity } from "@prisma/client";
 
 /**
  * Allowed status transitions (workflow enforcement)
@@ -177,6 +177,121 @@ export const updateBugStatusController = async (
 
     return res.status(500).json({
       message: "Internal server error",
+    });
+  }
+};
+
+export const getMyBugsController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user?.id;
+
+    const bugs = await prisma.bug.findMany({
+      where: {
+        assignedToId: userId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.status(200).json(bugs);
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: "Failed to fetch assigned bugs",
+    });
+  }
+};
+
+export const getBugsController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { status, priority, severity, sortBy, order } = req.query;
+
+    const where: any = {};
+
+    if (status && Object.values(BugStatus).includes(status as BugStatus)) {
+      where.status = status as BugStatus;
+    }
+
+    if (priority && Object.values(BugPriority).includes(priority as BugPriority)) {
+      where.priority = priority as BugPriority;
+    }
+
+    if (severity && Object.values(BugSeverity).includes(severity as BugSeverity)) {
+      where.severity = severity as BugSeverity;
+    }
+
+    const bugs = await prisma.bug.findMany({
+      where,
+      orderBy: sortBy
+        ? {
+            [String(sortBy)]: order === "asc" ? "asc" : "desc",
+          }
+        : {
+            createdAt: "desc",
+          },
+    });
+
+    return res.status(200).json(bugs);
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: "Failed to fetch bugs",
+    });
+  }
+};
+
+export const assignBugController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const bugId = String(req.params.id);
+    const { assignedToId } = req.body;
+
+    if (!assignedToId) {
+      return res.status(400).json({
+        message: "assignedToId is required",
+      });
+    }
+
+    // Ensure bug exists
+    const bug = await prisma.bug.findUnique({
+      where: { id: bugId },
+    });
+
+    if (!bug) {
+      return res.status(404).json({
+        message: "Bug not found",
+      });
+    }
+
+    // Ensure user exists and is DEVELOPER
+    const user = await prisma.user.findUnique({
+      where: { id: assignedToId },
+    });
+
+    if (!user || user.role !== "DEVELOPER") {
+      return res.status(400).json({
+        message: "Assigned user must be a DEVELOPER",
+      });
+    }
+
+    const updatedBug = await prisma.bug.update({
+      where: { id: bugId },
+      data: {
+        assignedToId,
+      },
+    });
+
+    return res.status(200).json(updatedBug);
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: "Failed to assign bug",
     });
   }
 };
