@@ -23,6 +23,7 @@ model User {
   testCases           TestCase[]
   testRunsCreated     TestRun[]
   assignedRunCases    TestRunTestCase[]
+  assignedBugs        Bug[]
 }
 
 model RefreshToken {
@@ -153,27 +154,34 @@ model ExecutionStep {
 }
 
 model Bug {
-  id              String   @id @default(uuid())
-  bugId           String   @unique
-  title           String
-  description     String
+  id               String   @id @default(uuid())
+  bugId            String   @unique
+  title            String
+  description      String
+  stepsToReproduce String?
   expectedBehavior String
   actualBehavior   String
 
-  severity        BugSeverity
-  priority        BugPriority
-  status          BugStatus   @default(NEW)
+  environment      String?
+  affectedVersion  String?
 
-  testCaseId      String?
-  executionId     String?
-  executionStepId String?
+  severity         BugSeverity
+  priority         BugPriority
+  status           BugStatus   @default(NEW)
 
-  testCase        TestCase?      @relation(fields: [testCaseId], references: [id])
-  execution       Execution?     @relation(fields: [executionId], references: [id])
-  executionStep   ExecutionStep? @relation(fields: [executionStepId], references: [id])
+  assignedToId     String?
+  assignedTo       User? @relation(fields: [assignedToId], references: [id])
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  testCaseId       String?
+  executionId      String?
+  executionStepId  String?
+
+  testCase         TestCase?      @relation(fields: [testCaseId], references: [id])
+  execution        Execution?     @relation(fields: [executionId], references: [id])
+  executionStep    ExecutionStep? @relation(fields: [executionStepId], references: [id])
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 enum UserRole {
