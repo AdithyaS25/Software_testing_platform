@@ -24,6 +24,7 @@ model User {
   testRunsCreated     TestRun[]
   assignedRunCases    TestRunTestCase[]
   assignedBugs        Bug[]
+  resolvedBugs        Bug[]                 @relation("ResolvedBugs")
 }
 
 model RefreshToken {
@@ -182,6 +183,11 @@ model Bug {
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  fixNotes        String?
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolvedBy      User? @relation("ResolvedBugs", fields: [resolvedById], references: [id])
 }
 
 enum UserRole {

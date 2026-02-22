@@ -158,16 +158,20 @@ export const updateBugStatusController = async (
       });
     }
 
-    const updatedBug = await prisma.bug.update({
-      where: { id: bugId },
-      data: {
-        status: status as BugStatus,
-        ...(status === "FIXED" && {
-          description:
-            bug.description + "\n\nFix Notes:\n" + fixNotes,
-        }),
-      },
-    });
+    const updateData: any = {
+  status: status as BugStatus,
+};
+
+if (status === "FIXED") {
+  updateData.fixNotes = fixNotes;
+  updateData.resolvedAt = new Date();
+  updateData.resolvedById = req.user?.id;
+}
+
+const updatedBug = await prisma.bug.update({
+  where: { id: bugId },
+  data: updateData,
+});
 
     return res.status(200).json(updatedBug);
   } catch (error: unknown) {
