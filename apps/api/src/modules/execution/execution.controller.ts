@@ -6,6 +6,7 @@ import {
   updateExecutionService,
   completeExecutionService,
 } from "./execution.service";
+import { BugSeverity, BugPriority, BugStatus } from "@prisma/client";
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -153,3 +154,83 @@ export const uploadExecutionEvidenceController = async (
     });
   }
 };
+
+export const failAndCreateBugController = async (
+  req: Request,
+  res: Response
+) => {
+  const executionId = String(req.params.executionId);
+  const stepId = String(req.params.stepId);
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1️⃣ Fetch execution
+      const execution = await tx.execution.findUnique({
+        where: { id: executionId },
+        include: {
+          testCase: true,
+        },
+      });
+
+      if (!execution) {
+        throw new Error("Execution not found");
+      }
+
+      if (execution.status === "COMPLETED") {
+        throw new Error("Execution already completed");
+      }
+
+      // 2️⃣ Fetch step
+      const step = await tx.executionStep.findUnique({
+        where: { id: stepId },
+      });
+
+      if (!step || step.executionId !== executionId) {
+        throw new Error("Execution step not found");
+      }
+
+      // 3️⃣ Mark step as FAIL
+      await tx.executionStep.update({
+        where: { id: stepId },
+        data: {
+          status: "FAIL",
+        },
+      });
+
+      // 4️⃣ Generate Bug ID
+      const bugCount = await tx.bug.count();
+      const bugId = `BUG-${new Date().getFullYear()}-${String(
+        bugCount + 1
+      ).padStart(5, "0")}`;
+
+      // 5️⃣ Create Bug
+      const bug = await tx.bug.create({
+        data: {
+          bugId,
+          title: `Failure in ${execution.testCase.title}`,
+          description: `Auto-created from execution failure.`,
+          expectedBehavior: step.expectedResult ?? "Expected result not provided",
+          actualBehavior: step.actualResult ?? "Actual result not provided",
+          severity: BugSeverity.MAJOR,
+          priority: BugPriority.P3_MEDIUM,
+          status: BugStatus.NEW,
+          testCaseId: execution.testCaseId,
+          executionId: executionId,
+          executionStepId: stepId,
+        },
+      });
+
+      return bug;
+    });
+
+    return res.status(201).json(result);
+  } catch (error: unknown) {
+  if (error instanceof Error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  return res.status(500).json({
+    message: "Internal server error",
+  });
+}
+}

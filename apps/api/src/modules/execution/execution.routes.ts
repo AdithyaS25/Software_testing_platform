@@ -7,6 +7,7 @@ import {
   updateExecutionController,
   completeExecutionController,
   uploadExecutionEvidenceController,
+  failAndCreateBugController,
 } from "./execution.controller";
 import { uploadEvidence } from "../../middleware/uploadEvidence";
 
@@ -160,6 +161,39 @@ router.post(
   asHandler(authorize([UserRole.TESTER])),
   uploadEvidence.single("file"),
   asHandler(uploadExecutionEvidenceController)
+);
+
+/**
+ * @openapi
+ * /executions/{executionId}/steps/{stepId}/fail-and-create-bug:
+ *   post:
+ *     summary: Mark step as FAIL and create linked bug
+ *     tags:
+ *       - Execution
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: executionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: stepId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       201:
+ *         description: Bug created successfully
+ *       400:
+ *         description: Validation error
+ */
+router.post(
+  "/:executionId/steps/:stepId/fail-and-create-bug",
+  asHandler(authenticate),
+  asHandler(authorize([UserRole.TESTER])),
+  asHandler(failAndCreateBugController)
 );
 
 export default router;
