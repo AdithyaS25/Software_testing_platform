@@ -7,7 +7,11 @@ import {
   getTestSuitesController,
   addTestCaseToSuiteController,
   removeTestCaseFromSuiteController,
+  executeSuiteController,
+  completeSuiteExecutionController,
+  getSuiteExecutionReportController
 } from "./testSuite.controller";
+import { completeExecutionController } from "../execution/execution.controller";
 
 const router: Router = Router();
 
@@ -146,4 +150,153 @@ router.delete(
   asHandler(removeTestCaseFromSuiteController)
 );
 
+/**
+ * @openapi
+ * /test-suites/{suiteId}/execute:
+ *   post:
+ *     summary: Execute entire test suite
+ *     tags: [Test Suite]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: suiteId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - executionMode
+ *             properties:
+ *               executionMode:
+ *                 type: string
+ *                 enum: [SEQUENTIAL, PARALLEL]
+ *     responses:
+ *       201:
+ *         description: Suite execution started successfully
+ */
+router.post(
+  "/:suiteId/execute",
+  asHandler(authenticate),
+  asHandler(authorize([UserRole.TESTER])),
+  executeSuiteController
+);
+
+/**
+ * @openapi
+ * /test-suites/executions/{suiteExecutionId}:
+ *   get:
+ *     summary: Get consolidated suite execution report
+ *     tags:
+ *       - Test Suite
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: suiteExecutionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the Suite Execution
+ *     responses:
+ *       200:
+ *         description: Consolidated suite execution report
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 suite:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     module:
+ *                       type: string
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalTests:
+ *                       type: integer
+ *                     passed:
+ *                       type: integer
+ *                     failed:
+ *                       type: integer
+ *                     blocked:
+ *                       type: integer
+ *                     skipped:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                       enum: [IN_PROGRESS, COMPLETED]
+ *                     startedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     completedAt:
+ *                       type: string
+ *                       format: date-time
+ *                 executions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       executionId:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                         enum: [IN_PROGRESS, PASSED, FAILED, BLOCKED, SKIPPED]
+ *                       testCase:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           title:
+ *                             type: string
+ *                           module:
+ *                             type: string
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Suite execution not found
+ */
+router.get(
+  "/executions/:suiteExecutionId",
+  asHandler(authenticate),
+  asHandler(getSuiteExecutionReportController)
+);
+
+/**
+ * @swagger
+ * /test-suites/executions/{suiteExecutionId}/complete:
+ *   patch:
+ *     summary: Complete a suite execution and generate summary
+ *     tags:
+ *       - Test Suite
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: suiteExecutionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Suite execution completed successfully
+ */
+router.patch(
+  "/executions/:suiteExecutionId/complete",
+  asHandler(authenticate),
+  asHandler(authorize([UserRole.TESTER])),
+  completeSuiteExecutionController
+);
+
 export default router;
+

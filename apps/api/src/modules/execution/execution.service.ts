@@ -1,4 +1,5 @@
 import { prisma } from "../../prisma"; // adjust if your prisma import path differs
+import { ExecutionStatus, StepStatus } from "@prisma/client";
 
 // 1️⃣ Create Execution
 export const createExecutionService = async (
@@ -45,44 +46,55 @@ export const createExecutionService = async (
 // 2️⃣ Update Execution (Step status + actual result)
 export const updateExecutionService = async (
   executionId: string,
-  steps: {
-    id: string;
-    status?: string;
-    actualResult?: string;
-    notes?: string;
-  }[]
+  payload: {
+    status?: ExecutionStatus;
+    steps?: {
+      id: string;
+      status?: "PASS" | "FAIL" | "BLOCKED" | "SKIPPED";
+      actualResult?: string;
+      notes?: string;
+    }[];
+  }
 ) => {
-  if (!executionId) {
-    throw new Error("Execution ID is required");
-  }
+  const { status, steps } = payload;
 
-  for (const step of steps) {
-  const updateData: any = {};
-
-  if (step.status && step.status !== "") {
-  updateData.status = step.status;
-}
-
-  if (step.actualResult !== undefined) {
-    updateData.actualResult = step.actualResult;
-  }
-
-  if (step.notes !== undefined) {
-    updateData.notes = step.notes;
-  }
-
-  await prisma.executionStep.update({
-    where: { id: step.id },
-    data: updateData,
+  const execution = await prisma.execution.findUnique({
+    where: { id: executionId },
   });
-}
 
-  const updatedExecution = await prisma.execution.findUnique({
+  if (!execution) {
+    throw new Error("Execution not found");
+  }
+
+  // 🔹 Update execution status
+  if (status) {
+    await prisma.execution.update({
+      where: { id: executionId },
+      data: { status }, // ✅ Now correctly typed
+    });
+  }
+
+  // 🔹 Update execution steps
+  if (steps && Array.isArray(steps)) {
+    for (const step of steps) {
+      const updateData: any = {};
+
+      if (step.status) updateData.status = step.status;
+      if (step.actualResult)
+        updateData.actualResult = step.actualResult;
+      if (step.notes) updateData.notes = step.notes;
+
+      await prisma.executionStep.update({
+        where: { id: step.id },
+        data: updateData,
+      });
+    }
+  }
+
+  return prisma.execution.findUnique({
     where: { id: executionId },
     include: { steps: true },
   });
-
-  return updatedExecution;
 };
 
 // 3️⃣ Complete Execution
