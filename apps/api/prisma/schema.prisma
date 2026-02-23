@@ -24,9 +24,10 @@ model User {
   testRunsCreated     TestRun[]
   assignedRunCases    TestRunTestCase[]
   assignedBugs        Bug[]
-  resolvedBugs        Bug[]                 @relation("ResolvedBugs")
+  resolvedBugs        Bug[]                @relation("ResolvedBugs")
   bugComments         BugComment[]
   testSuites          TestSuite[]
+  suiteExecutions     TestSuiteExecution[]
 }
 
 model RefreshToken {
@@ -126,19 +127,21 @@ model TestRunTestCase {
 }
 
 model Execution {
-  id            String          @id @default(uuid())
-  testCaseId    String
-  executedById  String
-  status        ExecutionStatus @default(IN_PROGRESS)
-  overallResult StepStatus?
-  startedAt     DateTime        @default(now())
-  completedAt   DateTime?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  executedBy    User            @relation("UserExecutions", fields: [executedById], references: [id])
-  testCase      TestCase        @relation(fields: [testCaseId], references: [id])
-  steps         ExecutionStep[]
-  bugs          Bug[]
+  id               String              @id @default(uuid())
+  testCaseId       String
+  executedById     String
+  status           ExecutionStatus     @default(IN_PROGRESS)
+  overallResult    StepStatus?
+  startedAt        DateTime            @default(now())
+  completedAt      DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  executedBy       User                @relation("UserExecutions", fields: [executedById], references: [id])
+  testCase         TestCase            @relation(fields: [testCaseId], references: [id])
+  steps            ExecutionStep[]
+  bugs             Bug[]
+  suiteExecutionId String?
+  suiteExecution   TestSuiteExecution? @relation(fields: [suiteExecutionId], references: [id])
 }
 
 model ExecutionStep {
@@ -158,75 +161,111 @@ model ExecutionStep {
 }
 
 model Bug {
-  id               String   @id @default(uuid())
-  bugId            String   @unique
+  id               String  @id @default(uuid())
+  bugId            String  @unique
   title            String
   description      String
   stepsToReproduce String?
   expectedBehavior String
   actualBehavior   String
 
-  environment      String?
-  affectedVersion  String?
+  environment     String?
+  affectedVersion String?
 
-  severity         BugSeverity
-  priority         BugPriority
-  status           BugStatus   @default(NEW)
+  severity BugSeverity
+  priority BugPriority
+  status   BugStatus   @default(NEW)
 
-  assignedToId     String?
-  assignedTo       User? @relation(fields: [assignedToId], references: [id])
+  assignedToId String?
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
 
-  testCaseId       String?
-  executionId      String?
-  executionStepId  String?
+  testCaseId      String?
+  executionId     String?
+  executionStepId String?
 
-  testCase         TestCase?      @relation(fields: [testCaseId], references: [id])
-  execution        Execution?     @relation(fields: [executionId], references: [id])
-  executionStep    ExecutionStep? @relation(fields: [executionStepId], references: [id])
+  testCase      TestCase?      @relation(fields: [testCaseId], references: [id])
+  execution     Execution?     @relation(fields: [executionId], references: [id])
+  executionStep ExecutionStep? @relation(fields: [executionStepId], references: [id])
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  fixNotes        String?
-  resolvedAt      DateTime?
-  resolvedById    String?
-  resolvedBy      User? @relation("ResolvedBugs", fields: [resolvedById], references: [id])
-  comments        BugComment[]
+  fixNotes     String?
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?        @relation("ResolvedBugs", fields: [resolvedById], references: [id])
+  comments     BugComment[]
 }
 
 model BugComment {
-  id        String   @id @default(uuid())
-  content   String
+  id      String @id @default(uuid())
+  content String
 
-  bugId     String
-  bug       Bug      @relation(fields: [bugId], references: [id])
+  bugId String
+  bug   Bug    @relation(fields: [bugId], references: [id])
 
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model TestSuite {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
   description String?
   module      String?
 
   createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdBy   User   @relation(fields: [createdById], references: [id])
 
   // Many-to-many with TestCase
-  testCases   TestCase[]
+  testCases TestCase[]
 
   // Hierarchical (Self-relation)
-  parentId    String?
-  parent      TestSuite?  @relation("SuiteHierarchy", fields: [parentId], references: [id])
-  children    TestSuite[] @relation("SuiteHierarchy")
+  parentId String?
+  parent   TestSuite?  @relation("SuiteHierarchy", fields: [parentId], references: [id])
+  children TestSuite[] @relation("SuiteHierarchy")
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  suiteExecutions TestSuiteExecution[]
+}
+
+model TestSuiteExecution {
+  id      String    @id @default(uuid())
+  suiteId String
+  suite   TestSuite @relation(fields: [suiteId], references: [id])
+
+  executedById String
+  executedBy   User   @relation(fields: [executedById], references: [id])
+
+  executionMode SuiteExecutionMode
+  status        SuiteExecutionStatus
+
+  totalTests Int
+  passed     Int @default(0)
+  failed     Int @default(0)
+  blocked    Int @default(0)
+  skipped    Int @default(0)
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  executions Execution[]
+
+  createdAt DateTime @default(now())
+}
+
+enum SuiteExecutionMode {
+  SEQUENTIAL
+  PARALLEL
+}
+
+enum SuiteExecutionStatus {
+  IN_PROGRESS
+  COMPLETED
 }
 
 enum UserRole {
@@ -291,6 +330,10 @@ enum AutomationStatus {
 enum ExecutionStatus {
   IN_PROGRESS
   COMPLETED
+  PASSED
+  FAILED
+  BLOCKED
+  SKIPPED
 }
 
 enum StepStatus {
