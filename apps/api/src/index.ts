@@ -12,6 +12,8 @@ import { swaggerSpec } from "./config/swagger";
 import testRunRoutes from "./modules/test-run/testRun.routes";
 import path from "path";
 import bugRoutes from "./modules/bug/bug.routes";
+import testSuiteRoutes from "./modules/test-suite/testSuite.routes";
+
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -32,6 +34,7 @@ app.use("/executions", executionRoutes);
 app.use("/test-runs", testRunRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/bugs", bugRoutes);
+app.use("/test-suites", testSuiteRoutes);
 
 /* =======================
    HEALTH CHECK

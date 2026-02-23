@@ -26,6 +26,7 @@ model User {
   assignedBugs        Bug[]
   resolvedBugs        Bug[]                 @relation("ResolvedBugs")
   bugComments         BugComment[]
+  testSuites          TestSuite[]
 }
 
 model RefreshToken {
@@ -85,6 +86,7 @@ model TestCase {
   testRunCases            TestRunTestCase[]
   steps                   TestStep[]
   bugs                    Bug[]
+  testSuites              TestSuite[]
 }
 
 model TestStep {
@@ -204,6 +206,27 @@ model BugComment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model TestSuite {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  module      String?
+
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+
+  // Many-to-many with TestCase
+  testCases   TestCase[]
+
+  // Hierarchical (Self-relation)
+  parentId    String?
+  parent      TestSuite?  @relation("SuiteHierarchy", fields: [parentId], references: [id])
+  children    TestSuite[] @relation("SuiteHierarchy")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 enum UserRole {
