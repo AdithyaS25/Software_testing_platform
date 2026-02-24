@@ -15,6 +15,7 @@ import path from "path";
 import bugRoutes from "./modules/bug/bug.routes";
 import testSuiteRoutes from "./modules/test-suite/testSuite.routes";
 import reportRoutes from "./modules/report/report.routes";
+import bugReportRoutes from "./modules/report/bug-report.routes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -37,6 +38,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/bugs", bugRoutes);
 app.use("/test-suites", testSuiteRoutes);
 app.use("/reports", reportRoutes);
+app.use("/reports", bugReportRoutes);
 
 /* =======================
    HEALTH CHECK
