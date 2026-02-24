@@ -18,6 +18,7 @@ import reportRoutes from "./modules/report/report.routes";
 import bugReportRoutes from "./modules/report/bug-report.routes";
 import developerPerformanceRoutes from "./modules/report/developer-performance.routes";
 import testerPerformanceRoutes from "./modules/report/tester-performance.routes";
+import exportRoutes from "./modules/report/export.routes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -43,7 +44,7 @@ app.use("/reports", reportRoutes);
 app.use("/reports", bugReportRoutes);
 app.use("/reports", developerPerformanceRoutes);
 app.use("/reports", testerPerformanceRoutes);
-
+app.use("/reports", exportRoutes);
 /* =======================
    HEALTH CHECK
    ======================= */
