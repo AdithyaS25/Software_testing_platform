@@ -1,32 +1,47 @@
 import { prisma } from "../../prisma"; // adjust if your prisma import path differs
 import { ExecutionStatus, StepStatus } from "@prisma/client";
 
+
 // 1️⃣ Create Execution
 export const createExecutionService = async (
   testCaseId: string,
+  testRunId: string,
   userId: string
 ) => {
   if (!testCaseId) {
     throw new Error("Test case ID is required");
   }
 
-  // Fetch test case with steps
+  if (!testRunId) {
+    throw new Error("Test run ID is required");
+  }
+
+  // Validate test case
   const testCase = await prisma.testCase.findUnique({
     where: { id: testCaseId },
-    include: {
-      steps: true, // ensure your TestCase model has steps relation
-    },
+    include: { steps: true },
   });
 
   if (!testCase) {
     throw new Error("Test case not found");
   }
 
-  // Create execution and copy steps
+  // Validate test run exists
+  const testRun = await prisma.testRun.findUnique({
+    where: { id: testRunId },
+  });
+
+  if (!testRun) {
+    throw new Error("Test run not found");
+  }
+
+  // Create execution with testRunId
   const execution = await prisma.execution.create({
     data: {
       testCaseId,
+      testRunId, // ✅ FIXED
       executedById: userId,
+      status: ExecutionStatus.IN_PROGRESS,
       steps: {
         create: testCase.steps.map((step) => ({
           stepNumber: step.stepNumber,

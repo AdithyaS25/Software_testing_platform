@@ -13,6 +13,7 @@ import {
   cloneTestCase,
   deleteTestCase
 } from "./testCase.service";
+import { getAuthUser } from "../../utils/getAuthUser";
 
 /* ============================
    CREATE TEST CASE (FR-TC-001)
@@ -31,7 +32,9 @@ export async function createTestCaseController(
     });
   }
 
-  const testCase = await createTestCase(parsed.data, req.user.id);
+  const user = getAuthUser(req);
+
+  const testCase = await createTestCase(parsed.data, user.id);
 
   return res.status(201).json({
     message: "Test case created successfully",
@@ -58,6 +61,8 @@ export async function listTestCasesController(
 
   const { page, limit, status, priority, module, search } = parsed.data;
 
+  const user = getAuthUser(req);
+
   const result = await listTestCases({
     page,
     limit,
@@ -65,8 +70,8 @@ export async function listTestCasesController(
     priority,
     module,
     search,
-    userId: req.user.id,
-    role: req.user.role,
+    userId: user.id,
+    role: user.role,
   });
 
   return res.status(200).json({
@@ -89,17 +94,18 @@ export async function getTestCaseByIdController(
 ) {
   const { id } = req.params;
 
-  // ✅ Validate route param
   if (!id || Array.isArray(id)) {
     return res.status(400).json({
       message: "Invalid test case id",
     });
   }
 
+  const user = getAuthUser(req);
+
   const testCase = await getTestCaseById(
     id,
-    req.user.id,
-    req.user.role
+    user.id,
+    user.role
   );
 
   if (!testCase) {
@@ -136,11 +142,13 @@ export async function updateTestCaseController(
     });
   }
 
+  const user = getAuthUser(req);
+
   const updated = await updateTestCase(
     id,
     parsed.data,
-    req.user.id,
-    req.user.role
+    user.id,
+    user.role
   );
 
   if (!updated) {
@@ -167,10 +175,12 @@ export async function cloneTestCaseController(
     return res.status(400).json({ message: "Invalid test case id" });
   }
 
+  const user = getAuthUser(req);
+
   const cloned = await cloneTestCase(
     id,
-    req.user.id,
-    req.user.role
+    user.id,
+    user.role
   );
 
   if (!cloned) {
@@ -197,10 +207,12 @@ export async function deleteTestCaseController(
     return res.status(400).json({ message: "Invalid test case id" });
   }
 
+  const user = getAuthUser(req);
+
   const deleted = await deleteTestCase(
     id,
-    req.user.id,
-    req.user.role
+    user.id,
+    user.role
   );
 
   if (!deleted) {

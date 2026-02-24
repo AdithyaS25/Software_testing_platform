@@ -193,13 +193,13 @@ export const getMyBugsController = async (
     const userId = req.user?.id;
 
     const bugs = await prisma.bug.findMany({
-      where: {
-        assignedToId: userId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+  where: {
+    ...(userId ? { assignedToId: userId } : {}),
+  },
+  orderBy: {
+    createdAt: "desc",
+  },
+});
 
     return res.status(200).json(bugs);
   } catch (error: unknown) {

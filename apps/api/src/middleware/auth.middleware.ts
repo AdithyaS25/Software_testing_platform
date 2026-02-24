@@ -1,4 +1,4 @@
-import { Response, NextFunction } from "express";
+import { RequestHandler } from "express";
 import { AuthenticatedRequest } from "../types/auth-request";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { UserRole } from "@prisma/client";
@@ -34,12 +34,14 @@ function verifyAccessToken(token: string): AccessTokenPayload {
   return payload as AccessTokenPayload;
 }
 
-export function authenticate(
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) {
-    
+/* ✅ FIXED */
+export const authenticate: RequestHandler = (
+  req,
+  res,
+  next
+) => {
+  const authReq = req as AuthenticatedRequest;
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -51,7 +53,7 @@ export function authenticate(
   try {
     const payload = verifyAccessToken(token);
 
-    req.user = {
+    authReq.user = {
       id: payload.sub,
       email: payload.email,
       role: payload.role,
@@ -61,19 +63,19 @@ export function authenticate(
   } catch {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
-}
+};
 
-export function authorize(allowedRoles: UserRole[]) {
-  return (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-  ) => {
-    if (!req.user) {
+/* ✅ FIXED */
+export const authorize =
+  (allowedRoles: UserRole[]): RequestHandler =>
+  (req, res, next) => {
+    const authReq = req as AuthenticatedRequest;
+
+    if (!authReq.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(authReq.user.role)) {
       return res.status(403).json({
         message: "Forbidden: Insufficient role",
       });
@@ -81,4 +83,4 @@ export function authorize(allowedRoles: UserRole[]) {
 
     next();
   };
-}
+  
