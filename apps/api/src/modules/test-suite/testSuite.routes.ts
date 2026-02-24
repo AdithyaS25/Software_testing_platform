@@ -9,7 +9,11 @@ import {
   removeTestCaseFromSuiteController,
   executeSuiteController,
   completeSuiteExecutionController,
-  getSuiteExecutionReportController
+  getSuiteExecutionReportController,
+  reorderSuiteTestCasesController,
+  cloneSuiteController,
+  archiveSuiteController,
+  restoreSuiteController
 } from "./testSuite.controller";
 import { completeExecutionController } from "../execution/execution.controller";
 
@@ -152,6 +156,160 @@ router.delete(
 
 /**
  * @openapi
+ * /test-suites/{id}/test-cases:
+ *   delete:
+ *     summary: Remove a test case from a test suite
+ *     tags:
+ *       - Test Suite
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Test Suite ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - testCaseId
+ *             properties:
+ *               testCaseId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Test case removed successfully
+ */
+router.delete(
+  "/:id/test-cases",
+  asHandler(authenticate),
+  asHandler(removeTestCaseFromSuiteController)
+);
+
+/**
+ * @openapi
+ * /test-suites/{id}/reorder:
+ *   put:
+ *     summary: Reorder test cases within a test suite
+ *     tags:
+ *       - Test Suite
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Test Suite ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderedTestCaseIds
+ *             properties:
+ *               orderedTestCaseIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Suite reordered successfully
+ */
+router.put(
+  "/:id/reorder",
+  asHandler(authenticate),
+  asHandler(reorderSuiteTestCasesController)
+);
+
+/**
+ * @openapi
+ * /test-suites/{id}/clone:
+ *   post:
+ *     summary: Clone an entire test suite
+ *     tags:
+ *       - Test Suite
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Original Test Suite ID
+ *     responses:
+ *       201:
+ *         description: Suite cloned successfully
+ */
+router.post(
+  "/:id/clone",
+  asHandler(authenticate),
+  asHandler(cloneSuiteController)
+);
+
+/**
+ * @openapi
+ * /test-suites/{id}/archive:
+ *   patch:
+ *     summary: Archive a test suite
+ *     tags:
+ *       - Test Suite
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Test Suite ID
+ *     responses:
+ *       200:
+ *         description: Suite archived successfully
+ */
+router.patch(
+  "/:id/archive",
+  asHandler(authenticate),
+  asHandler(archiveSuiteController)
+);
+
+/**
+ * @openapi
+ * /test-suites/{id}/restore:
+ *   patch:
+ *     summary: Restore an archived test suite
+ *     tags:
+ *       - Test Suite
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Test Suite ID
+ *     responses:
+ *       200:
+ *         description: Suite restored successfully
+ */
+router.patch(
+  "/:id/restore",
+  asHandler(authenticate),
+  asHandler(restoreSuiteController)
+);
+
+/**
+ * @openapi
  * /test-suites/{suiteId}/execute:
  *   post:
  *     summary: Execute entire test suite
@@ -185,6 +343,32 @@ router.post(
   asHandler(authenticate),
   asHandler(authorize([UserRole.TESTER])),
   executeSuiteController
+);
+
+/**
+ * @swagger
+ * /test-suites/executions/{suiteExecutionId}/complete:
+ *   patch:
+ *     summary: Complete a suite execution and generate summary
+ *     tags:
+ *       - Test Suite
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: suiteExecutionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Suite execution completed successfully
+ */
+router.patch(
+  "/executions/:suiteExecutionId/complete",
+  asHandler(authenticate),
+  asHandler(authorize([UserRole.TESTER])),
+  completeSuiteExecutionController
 );
 
 /**
@@ -272,31 +456,4 @@ router.get(
   asHandler(getSuiteExecutionReportController)
 );
 
-/**
- * @swagger
- * /test-suites/executions/{suiteExecutionId}/complete:
- *   patch:
- *     summary: Complete a suite execution and generate summary
- *     tags:
- *       - Test Suite
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: suiteExecutionId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Suite execution completed successfully
- */
-router.patch(
-  "/executions/:suiteExecutionId/complete",
-  asHandler(authenticate),
-  asHandler(authorize([UserRole.TESTER])),
-  completeSuiteExecutionController
-);
-
 export default router;
-

@@ -60,9 +60,9 @@ model PasswordHistory {
 }
 
 model TestCase {
-  id                      String            @id @default(uuid())
-  testCaseId              String            @unique
-  title                   String            @db.VarChar(200)
+  id                      String              @id @default(uuid())
+  testCaseId              String              @unique
+  title                   String              @db.VarChar(200)
   description             String
   module                  String
   priority                TestCasePriority
@@ -78,16 +78,16 @@ model TestCase {
   automationStatus        AutomationStatus
   automationScriptLink    String?
   tags                    String[]
-  version                 Int               @default(1)
+  version                 Int                 @default(1)
   createdById             String
-  createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
   executions              Execution[]
-  createdBy               User              @relation(fields: [createdById], references: [id])
+  createdBy               User                @relation(fields: [createdById], references: [id])
   testRunCases            TestRunTestCase[]
   steps                   TestStep[]
   bugs                    Bug[]
-  testSuites              TestSuite[]
+  suiteRelations          TestSuiteTestCase[]
 }
 
 model TestStep {
@@ -220,17 +220,33 @@ model TestSuite {
   createdById String
   createdBy   User   @relation(fields: [createdById], references: [id])
 
-  // Many-to-many with TestCase
-  testCases TestCase[]
+  testCases TestSuiteTestCase[]
 
   // Hierarchical (Self-relation)
   parentId String?
   parent   TestSuite?  @relation("SuiteHierarchy", fields: [parentId], references: [id])
   children TestSuite[] @relation("SuiteHierarchy")
 
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   suiteExecutions TestSuiteExecution[]
+}
+
+model TestSuiteTestCase {
+  id         String @id @default(uuid())
+  suiteId    String
+  testCaseId String
+  position   Int
+
+  suite    TestSuite @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  testCase TestCase  @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([suiteId, testCaseId])
 }
 
 model TestSuiteExecution {
