@@ -21,9 +21,19 @@ export const createExecutionController: RequestHandler = async (
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const { testCaseId } = req.body;
+  const { testCaseId, testRunId } = req.body;
 
-  const execution = await createExecutionService(testCaseId, userId);
+  if (!testCaseId || !testRunId) {
+    return res.status(400).json({
+      message: "testCaseId and testRunId are required",
+    });
+  }
+
+  const execution = await createExecutionService(
+    testCaseId,
+    testRunId,
+    userId
+  );
 
   return res.status(201).json({
     message: "Execution created successfully",

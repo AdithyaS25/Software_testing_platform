@@ -113,6 +113,7 @@ model TestRun {
   updatedAt   DateTime          @updatedAt
   createdBy   User              @relation(fields: [createdById], references: [id])
   testCases   TestRunTestCase[]
+  executions  Execution[]
 }
 
 model TestRunTestCase {
@@ -142,6 +143,8 @@ model Execution {
   bugs             Bug[]
   suiteExecutionId String?
   suiteExecution   TestSuiteExecution? @relation(fields: [suiteExecutionId], references: [id])
+  testRunId        String?
+  testRun          TestRun? @relation(fields: [testRunId], references: [id])
 }
 
 model ExecutionStep {
