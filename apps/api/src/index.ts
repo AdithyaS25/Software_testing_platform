@@ -27,7 +27,12 @@ const PORT = process.env.PORT || 4000;
 /* =======================
    MIDDLEWARE
    ======================= */
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173", // frontend URL
+    credentials: true,              // VERY IMPORTANT
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 

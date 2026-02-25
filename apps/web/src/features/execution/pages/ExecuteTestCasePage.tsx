@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { ExecutionStepCard } from "../components/ExecutionStepCard";
 import {
@@ -18,30 +18,36 @@ interface ExecutionStep {
 }
 
 export const ExecuteTestCasePage = () => {
-  const { id } = useParams();
-  const token = localStorage.getItem("accessToken") || "";
+  const { id, testRunId } = useParams();
 
   const [executionId, setExecutionId] = useState<string | null>(null);
   const [steps, setSteps] = useState<ExecutionStep[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const initExecution = async () => {
-      if (!id) return;
+  // ✅ StrictMode guard
+  const hasInitialized = useRef(false);
 
+  useEffect(() => {
+    if (!id || !testRunId) return;
+
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const initExecution = async () => {
       try {
-  const execution = await createExecution(id, token);
-  setExecutionId(execution.id);
-  setSteps(execution.steps);
-} catch (err) {
-  console.error("Create execution failed:", err);
-} finally {
-  setLoading(false);
-}
+        const execution = await createExecution(id, testRunId);
+
+        setExecutionId(execution.id);
+        setSteps(execution.steps ?? []);
+      } catch (err) {
+        console.error("Create execution failed:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     initExecution();
-  }, [id]);
+  }, [id, testRunId]);
 
   const handleStepUpdate = async (
     stepId: string,
@@ -55,24 +61,20 @@ export const ExecuteTestCasePage = () => {
 
     setSteps(updatedSteps);
 
-    await updateExecution(
-      executionId,
-      [
-        {
-          id: stepId,
-          status: data.status,
-          actualResult: data.actualResult,
-          notes: data.notes,
-        },
-      ],
-      token
-    );
+    await updateExecution(executionId, [
+      {
+        id: stepId,
+        status: data.status,
+        actualResult: data.actualResult,
+        notes: data.notes,
+      },
+    ]);
   };
 
   const handleComplete = async () => {
     if (!executionId) return;
 
-    const result = await completeExecution(executionId, token);
+    const result = await completeExecution(executionId);
 
     alert(`Execution Completed. Result: ${result.overallResult}`);
   };

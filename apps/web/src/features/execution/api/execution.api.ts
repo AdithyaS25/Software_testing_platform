@@ -1,63 +1,32 @@
-const API_BASE = "http://localhost:4000"; // adjust if needed
+import { apiClient } from "../../../shared/lib/axios";
 
 export const createExecution = async (
   testCaseId: string,
-  token: string
+  testRunId: string
 ) => {
-  const res = await fetch(`${API_BASE}/executions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ testCaseId }),
+  const res = await apiClient.post("/executions", {
+    testCaseId,
+    testRunId,
   });
 
-  if (!res.ok) {
-    throw new Error("Failed to create execution");
-  }
-
-  return res.json();
+  return res.data.data;
 };
 
 export const updateExecution = async (
   executionId: string,
-  steps: any[],
-  token: string
+  steps: any[]
 ) => {
-  const res = await fetch(`${API_BASE}/executions/${executionId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ steps }),
+  const res = await apiClient.patch(`/executions/${executionId}`, {
+    steps,
   });
 
-  if (!res.ok) {
-    throw new Error("Failed to update execution");
-  }
-
-  return res.json();
+  return res.data;
 };
 
-export const completeExecution = async (
-  executionId: string,
-  token: string
-) => {
-  const res = await fetch(
-    `${API_BASE}/executions/${executionId}/complete`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+export const completeExecution = async (executionId: string) => {
+  const res = await apiClient.post(
+    `/executions/${executionId}/complete`
   );
 
-  if (!res.ok) {
-    throw new Error("Failed to complete execution");
-  }
-
-  return res.json();
+  return res.data;
 };
