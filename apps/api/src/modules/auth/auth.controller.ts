@@ -108,8 +108,10 @@ export const loginController = async (
   });
 
   const refreshToken = signRefreshToken({
-    sub: user.id,
-  });
+  sub: user.id,
+  email: user.email,
+  role: user.role,
+});
 
   await prisma.refreshToken.create({
     data: {
@@ -123,8 +125,9 @@ export const loginController = async (
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: "lax",
     secure: false,
+    path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -301,6 +304,7 @@ export const refreshTokenController = async (
       role: payload.role,
     });
 
+    console.log("🔄 Refresh payload:", payload);
     return res.json({ accessToken });
   } catch {
     return res.status(401).json({ message: "Invalid refresh token" });

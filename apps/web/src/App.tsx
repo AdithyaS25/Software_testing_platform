@@ -6,7 +6,7 @@ function App() {
     <Routes>
       <Route path="/" element={<div>Dashboard</div>} />
       <Route
-        path="/test-cases/:id/execute"
+        path="/test-runs/:testRunId/test-cases/:id/execute"
         element={<ExecuteTestCasePage />}
       />
     </Routes>

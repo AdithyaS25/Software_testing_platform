@@ -35,11 +35,28 @@ export const createExecutionService = async (
     throw new Error("Test run not found");
   }
 
-  // Create execution with testRunId
+  // ✅ CHECK IF EXECUTION ALREADY EXISTS (IDEMPOTENT GUARD)
+  const existingExecution = await prisma.execution.findFirst({
+    where: {
+      testCaseId,
+      testRunId,
+      executedById: userId,
+      status: ExecutionStatus.IN_PROGRESS,
+    },
+    include: {
+      steps: true,
+    },
+  });
+
+  if (existingExecution) {
+    return existingExecution;
+  }
+
+  // ✅ CREATE NEW EXECUTION
   const execution = await prisma.execution.create({
     data: {
       testCaseId,
-      testRunId, // ✅ FIXED
+      testRunId,
       executedById: userId,
       status: ExecutionStatus.IN_PROGRESS,
       steps: {
