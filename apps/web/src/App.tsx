@@ -1,16 +1,7 @@
-import { Routes, Route } from "react-router-dom"
-import { ExecuteTestCasePage } from "./features/execution/pages/ExecuteTestCasePage"
+import { AppRoutes } from "./app/routes/AppRoutes";
 
 function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<div>Dashboard</div>} />
-      <Route
-        path="/test-runs/:testRunId/test-cases/:id/execute"
-        element={<ExecuteTestCasePage />}
-      />
-    </Routes>
-  )
+  return <AppRoutes />;
 }
 
-export default App
+export default App;

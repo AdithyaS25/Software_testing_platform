@@ -1,4 +1,4 @@
-import { apiClient } from "../../../shared/lib/axios";
+import { apiClient } from "../../../lib/axios";
 
 export const createExecution = async (
   testCaseId: string,
