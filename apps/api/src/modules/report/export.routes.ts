@@ -73,7 +73,7 @@ router.get(
 router.get(
   "/bug/export",
   authenticate,
-  authorize([UserRole.TESTER, UserRole.DEVELOPER]),
+  authorize([UserRole.TESTER, UserRole.DEVELOPER, UserRole.ADMIN]),
   exportBugReportController
 );
 

@@ -57,7 +57,7 @@ const router: Router = Router();
 router.get(
   "/test-execution/:testRunId",
   authenticate,
-  authorize([UserRole.TESTER, UserRole.DEVELOPER]),
+  authorize([UserRole.TESTER, UserRole.DEVELOPER, UserRole.ADMIN]),
   getTestExecutionReport
 );
 

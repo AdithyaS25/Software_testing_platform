@@ -21,7 +21,7 @@ const router: Router = Router();
 router.get(
   "/developer-performance",
   authenticate,
-  authorize([UserRole.TESTER, UserRole.DEVELOPER]),
+  authorize([UserRole.TESTER, UserRole.DEVELOPER, UserRole.ADMIN]),
   getDeveloperPerformanceController
 );
 

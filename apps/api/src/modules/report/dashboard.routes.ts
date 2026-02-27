@@ -34,7 +34,7 @@ const router: Router = Router();
 router.get(
   "/dashboard",
   authenticate,
-  authorize([UserRole.TESTER, UserRole.DEVELOPER]),
+  authorize([UserRole.TESTER, UserRole.DEVELOPER, UserRole.ADMIN]),
   getDashboardController
 );
 

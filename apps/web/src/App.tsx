@@ -1,16 +1,13 @@
-import { Routes, Route } from "react-router-dom"
-import { ExecuteTestCasePage } from "./features/execution/pages/ExecuteTestCasePage"
+import { AuthProvider } from "./app/providers/AuthProvider";
+import { AppRoutes } from "./app/routes/AppRoutes";
+import "./styles/globals.css";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<div>Dashboard</div>} />
-      <Route
-        path="/test-runs/:testRunId/test-cases/:id/execute"
-        element={<ExecuteTestCasePage />}
-      />
-    </Routes>
-  )
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;
