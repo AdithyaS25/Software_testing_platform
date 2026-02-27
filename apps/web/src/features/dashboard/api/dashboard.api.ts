@@ -1,7 +1,6 @@
 import { apiClient } from "../../../lib/axios";
-import type { DashboardResponse } from "../types/dashboard.types";
 
-export const getDashboardData = async (): Promise<DashboardResponse> => {
+export const getDashboardData = async () => {
   const res = await apiClient.get("/reports/dashboard");
-  return res.data.data;
+  return res.data.data || res.data;
 };
