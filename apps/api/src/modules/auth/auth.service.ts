@@ -1,11 +1,24 @@
 import { prisma } from "../../prisma";
-import { signAccessToken, verifyRefreshToken } from "../../utils/jwt";
+import {
+  signAccessToken,
+  verifyRefreshToken
+} from "../../utils/jwt";
 
-export async function refreshAccessToken(refreshToken: string) {
-  // 1. Verify JWT signature
-  const payload = verifyRefreshToken(refreshToken) as { userId: string };
+/* ============================
+   REFRESH ACCESS TOKEN
+============================ */
 
-  // 2. Check DB record
+export async function refreshAccessToken(
+  refreshToken: string
+) {
+  // 1️⃣ Verify JWT using your helper
+  const payload = verifyRefreshToken(refreshToken);
+
+  if (!payload || !payload.sub) {
+    throw new Error("Invalid refresh token");
+  }
+
+  // 2️⃣ Check DB record
   const storedToken = await prisma.refreshToken.findUnique({
     where: { token: refreshToken },
   });
@@ -22,11 +35,19 @@ export async function refreshAccessToken(refreshToken: string) {
     throw new Error("Refresh token expired");
   }
 
-  // 3. Issue new access token
-  return signAccessToken({ userId: payload.userId });
+  // 3️⃣ Issue new access token
+  return signAccessToken({
+    userId: payload.sub,
+  });
 }
 
-export async function logoutFromAllDevices(userId: string) {
+/* ============================
+   LOGOUT FROM ALL DEVICES
+============================ */
+
+export async function logoutFromAllDevices(
+  userId: string
+) {
   await prisma.refreshToken.updateMany({
     where: {
       userId,

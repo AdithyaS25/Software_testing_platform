@@ -37,10 +37,12 @@ const roleBasedTransitions: Record<string, string[]> = {
  * FR-BUG-001 — Manual Bug Creation
  */
 export const createBugController = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
+    const projectId = String(req.params.projectId);
+
     const {
       title,
       description,
@@ -68,7 +70,11 @@ export const createBugController = async (
       });
     }
 
-    const bugCount = await prisma.bug.count();
+    // Project-scoped count
+    const bugCount = await prisma.bug.count({
+      where: { projectId },
+    });
+
     const bugId = `BUG-${new Date().getFullYear()}-${String(
       bugCount + 1
     ).padStart(5, "0")}`;
@@ -86,17 +92,20 @@ export const createBugController = async (
         status: BugStatus.NEW,
         environment,
         affectedVersion,
-        assignedToId,
-        testCaseId,
+        projectId, // 🔥 REQUIRED
+
+        ...(assignedToId && {
+          assignedTo: { connect: { id: assignedToId } },
+        }),
+
+        ...(testCaseId && {
+          testCase: { connect: { id: testCaseId } },
+        }),
       },
     });
 
     return res.status(201).json(bug);
   } catch (error: unknown) {
-    if (error instanceof Error) {
-      return res.status(400).json({ message: error.message });
-    }
-
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -185,27 +194,30 @@ const updatedBug = await prisma.bug.update({
   }
 };
 
+
 export const getMyBugsController = async (
   req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
     const userId = req.user?.id;
+    const projectId = String(req.params.projectId);
+
+    if (!projectId) {
+      return res.status(400).json({ message: "Project ID is required" });
+    }
 
     const bugs = await prisma.bug.findMany({
-  where: {
-    ...(userId ? { assignedToId: userId } : {}),
-  },
-  orderBy: {
-    createdAt: "desc",
-  },
-});
+      where: {
+        projectId,                                    // ← scoped to project
+        ...(userId ? { assignedToId: userId } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
     return res.status(200).json(bugs);
   } catch (error: unknown) {
-    return res.status(500).json({
-      message: "Failed to fetch assigned bugs",
-    });
+    return res.status(500).json({ message: "Failed to fetch assigned bugs" });
   }
 };
 
@@ -214,9 +226,15 @@ export const getBugsController = async (
   res: Response
 ) => {
   try {
+    const projectId = String(req.params.projectId);
+
+    if (!projectId) {
+      return res.status(400).json({ message: "Project ID is required" });
+    }
+
     const { status, priority, severity, sortBy, order } = req.query;
 
-    const where: any = {};
+    const where: any = { projectId };   // ← scoped to project
 
     if (status && Object.values(BugStatus).includes(status as BugStatus)) {
       where.status = status as BugStatus;
@@ -233,19 +251,13 @@ export const getBugsController = async (
     const bugs = await prisma.bug.findMany({
       where,
       orderBy: sortBy
-        ? {
-            [String(sortBy)]: order === "asc" ? "asc" : "desc",
-          }
-        : {
-            createdAt: "desc",
-          },
+        ? { [String(sortBy)]: order === "asc" ? "asc" : "desc" }
+        : { createdAt: "desc" },
     });
 
     return res.status(200).json(bugs);
   } catch (error: unknown) {
-    return res.status(500).json({
-      message: "Failed to fetch bugs",
-    });
+    return res.status(500).json({ message: "Failed to fetch bugs" });
   }
 };
 

@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../../lib/axios";
 import { useAuth } from "../../../app/providers/AuthProvider";
-import { Button, PriorityBadge, SeverityBadge, StatusBadge, SearchInput, Select, EmptyState, Spinner, useToast } from "../../../shared/components/ui";
+import { Button, PriorityBadge, SeverityBadge, StatusBadge, SearchInput, Select, EmptyState, Spinner} from "../../../shared/components/ui";
+import { useParams } from "react-router-dom";
 
 export const BugsPage = () => {
+  const { projectId } = useParams<{ projectId: string }>();
   const { user } = useAuth();
   const nav = useNavigate();
-  const toast = useToast();
   const [bugs, setBugs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -17,19 +18,31 @@ export const BugsPage = () => {
   const [view, setView] = useState<"all" | "mine">(user?.role === "DEVELOPER" ? "mine" : "all");
 
   const load = () => {
-    setLoading(true);
-    const endpoint = view === "mine" && user?.role === "DEVELOPER" ? "/bugs/my" : "/bugs";
-    const params = new URLSearchParams();
-    if (statusFilter) params.set("status", statusFilter);
-    if (priorityFilter) params.set("priority", priorityFilter);
-    if (severityFilter) params.set("severity", severityFilter);
-    apiClient.get(`${endpoint}?${params}`).then(r => {
+  if (!projectId) return;
+  setLoading(true);
+
+  const endpoint =
+    view === "mine" && user?.role === "DEVELOPER"
+      ? `/api/projects/${projectId}/bugs/my`
+      : `/api/projects/${projectId}/bugs`;
+
+  const params = new URLSearchParams();
+  if (statusFilter) params.set("status", statusFilter);
+  if (priorityFilter) params.set("priority", priorityFilter);
+  if (severityFilter) params.set("severity", severityFilter);
+
+  apiClient
+    .get(`${endpoint}?${params}`)
+    .then((r) => {
       setBugs(r.data.data || r.data || []);
       setLoading(false);
-    }).catch(() => setLoading(false));
-  };
+    })
+    .catch(() => setLoading(false));
+};
 
-  useEffect(() => { load(); }, [view, statusFilter, priorityFilter, severityFilter]);
+useEffect(() => {
+  load();
+}, [projectId, view, statusFilter, priorityFilter, severityFilter]);
 
   const filtered = bugs.filter(b => !search || b.title?.toLowerCase().includes(search.toLowerCase()) || b.bugId?.toLowerCase().includes(search.toLowerCase()));
 

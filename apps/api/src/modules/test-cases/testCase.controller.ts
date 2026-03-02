@@ -16,8 +16,8 @@ import {
 import { getAuthUser } from "../../utils/getAuthUser";
 
 /* ============================
-   CREATE TEST CASE (FR-TC-001)
-   ============================ */
+   CREATE TEST CASE
+============================ */
 
 export async function createTestCaseController(
   req: AuthenticatedRequest,
@@ -32,9 +32,22 @@ export async function createTestCaseController(
     });
   }
 
+  const projectIdParam = req.params.projectId;
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  if (!projectId) {
+    return res.status(400).json({ message: "Project ID is required" });
+  }
+
   const user = getAuthUser(req);
 
-  const testCase = await createTestCase(parsed.data, user.id);
+  const testCase = await createTestCase(
+    projectId,
+    parsed.data,
+    user.id
+  );
 
   return res.status(201).json({
     message: "Test case created successfully",
@@ -43,8 +56,8 @@ export async function createTestCaseController(
 }
 
 /* ============================
-   LIST TEST CASES (FR-TC-002)
-   ============================ */
+   LIST TEST CASES
+============================ */
 
 export async function listTestCasesController(
   req: AuthenticatedRequest,
@@ -59,20 +72,31 @@ export async function listTestCasesController(
     });
   }
 
-  const { page, limit, status, priority, module, search } = parsed.data;
+  const projectIdParam = req.params.projectId;
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
 
+  if (!projectId) {
+    return res.status(400).json({ message: "Project ID is required" });
+  }
+
+  const { page, limit, status, priority, module, search } = parsed.data;
   const user = getAuthUser(req);
 
-  const result = await listTestCases({
+  const params: any = {
     page,
     limit,
-    status,
-    priority,
-    module,
-    search,
     userId: user.id,
     role: user.role,
-  });
+  };
+
+  if (status !== undefined) params.status = status;
+  if (priority !== undefined) params.priority = priority;
+  if (module !== undefined) params.module = module;
+  if (search !== undefined) params.search = search;
+
+  const result = await listTestCases(projectId, params);
 
   return res.status(200).json({
     meta: {
@@ -85,24 +109,31 @@ export async function listTestCasesController(
 }
 
 /* ============================
-   VIEW TEST CASE (FR-TC-003)
-   ============================ */
+   GET TEST CASE
+============================ */
 
 export async function getTestCaseByIdController(
   req: AuthenticatedRequest,
   res: Response
 ) {
-  const { id } = req.params;
+  const idParam = req.params.id;
+  const projectIdParam = req.params.projectId;
 
-  if (!id || Array.isArray(id)) {
+  const id = Array.isArray(idParam) ? idParam[0] : idParam;
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  if (!id || !projectId) {
     return res.status(400).json({
-      message: "Invalid test case id",
+      message: "Invalid id or projectId",
     });
   }
 
   const user = getAuthUser(req);
 
   const testCase = await getTestCaseById(
+    projectId,
     id,
     user.id,
     user.role
@@ -120,17 +151,25 @@ export async function getTestCaseByIdController(
 }
 
 /* ============================
-   UPDATE TEST CASE (FR-TC-002)
-   ============================ */
+   UPDATE TEST CASE
+============================ */
 
 export async function updateTestCaseController(
   req: AuthenticatedRequest,
   res: Response
 ) {
-  const { id } = req.params;
+  const idParam = req.params.id;
+  const projectIdParam = req.params.projectId;
 
-  if (!id || Array.isArray(id)) {
-    return res.status(400).json({ message: "Invalid test case id" });
+  const id = Array.isArray(idParam) ? idParam[0] : idParam;
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  if (!id || !projectId) {
+    return res.status(400).json({
+      message: "Invalid id or projectId",
+    });
   }
 
   const parsed = updateTestCaseSchema.safeParse(req.body);
@@ -145,6 +184,7 @@ export async function updateTestCaseController(
   const user = getAuthUser(req);
 
   const updated = await updateTestCase(
+    projectId,
     id,
     parsed.data,
     user.id,
@@ -152,7 +192,9 @@ export async function updateTestCaseController(
   );
 
   if (!updated) {
-    return res.status(404).json({ message: "Test case not found" });
+    return res.status(404).json({
+      message: "Test case not found",
+    });
   }
 
   return res.status(200).json({
@@ -162,29 +204,40 @@ export async function updateTestCaseController(
 }
 
 /* ============================
-   CLONE TEST CASE (FR-TC-003)
-   ============================ */
+   CLONE TEST CASE
+============================ */
 
 export async function cloneTestCaseController(
   req: AuthenticatedRequest,
   res: Response
 ) {
-  const { id } = req.params;
+  const idParam = req.params.id;
+  const projectIdParam = req.params.projectId;
 
-  if (!id || Array.isArray(id)) {
-    return res.status(400).json({ message: "Invalid test case id" });
+  const id = Array.isArray(idParam) ? idParam[0] : idParam;
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  if (!id || !projectId) {
+    return res.status(400).json({
+      message: "Invalid id or projectId",
+    });
   }
 
   const user = getAuthUser(req);
 
   const cloned = await cloneTestCase(
+    projectId,
     id,
     user.id,
     user.role
   );
 
   if (!cloned) {
-    return res.status(404).json({ message: "Test case not found" });
+    return res.status(404).json({
+      message: "Test case not found",
+    });
   }
 
   return res.status(201).json({
@@ -194,22 +247,31 @@ export async function cloneTestCaseController(
 }
 
 /* ============================
-   DELETE TEST CASE (FR-TC-004)
-   ============================ */
+   DELETE TEST CASE
+============================ */
 
 export async function deleteTestCaseController(
   req: AuthenticatedRequest,
   res: Response
 ) {
-  const { id } = req.params;
+  const idParam = req.params.id;
+  const projectIdParam = req.params.projectId;
 
-  if (!id || Array.isArray(id)) {
-    return res.status(400).json({ message: "Invalid test case id" });
+  const id = Array.isArray(idParam) ? idParam[0] : idParam;
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  if (!id || !projectId) {
+    return res.status(400).json({
+      message: "Invalid id or projectId",
+    });
   }
 
   const user = getAuthUser(req);
 
   const deleted = await deleteTestCase(
+    projectId,
     id,
     user.id,
     user.role

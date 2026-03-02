@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../../lib/axios";
 import { useAuth } from "../../../app/providers/AuthProvider";
-import { Button, Badge, StatusBadge, EmptyState, Modal, FormField, useToast, Spinner, ConfirmDialog } from "../../../shared/components/ui";
+import { Button, Badge, StatusBadge, EmptyState, Modal, FormField, useToast, Spinner,} from "../../../shared/components/ui";
+import { useParams } from "react-router-dom";
 
 export const TestSuitesPage = () => {
+  const { projectId } = useParams<{ projectId: string }>();
   const { user } = useAuth();
   const toast = useToast();
   const [suites, setSuites] = useState<any[]>([]);
@@ -20,47 +22,116 @@ export const TestSuitesPage = () => {
   const canEdit = user?.role === "TESTER" || user?.role === "ADMIN";
 
   const load = () => {
-    setLoading(true);
-    apiClient.get("/test-suites").then(r => { setSuites(r.data.data || r.data || []); setLoading(false); }).catch(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, []);
+  if (!projectId) return;
+  setLoading(true);
+  apiClient
+    .get(`/api/projects/${projectId}/test-suites`)
+    .then((r) => {
+      setSuites(r.data.data || r.data || []);
+      setLoading(false);
+    })
+    .catch(() => setLoading(false));
+};
 
-  const handleCreate = async () => {
-    setSaving(true);
-    try {
-      await apiClient.post("/test-suites", form);
-      toast.success("Suite created"); setCreateModal(false); setForm({ name: "", description: "" }); load();
-    } catch { toast.error("Failed to create suite"); }
-    finally { setSaving(false); }
-  };
+useEffect(() => {
+  load();
+}, [projectId]);
 
-  const handleClone = async (id: string) => {
-    try { await apiClient.post(`/test-suites/${id}/clone`); toast.success("Suite cloned"); load(); } catch { toast.error("Failed"); }
-  };
+const handleCreate = async () => {
+  if (!projectId) return;
+  setSaving(true);
+  try {
+    await apiClient.post(
+      `/api/projects/${projectId}/test-suites`,
+      form
+    );
+    toast.success("Suite created");
+    setCreateModal(false);
+    setForm({ name: "", description: "" });
+    load();
+  } catch {
+    toast.error("Failed to create suite");
+  } finally {
+    setSaving(false);
+  }
+};
 
-  const handleArchive = async (id: string, archived: boolean) => {
-    try {
-      await apiClient.patch(`/test-suites/${id}/${archived ? "restore" : "archive"}`);
-      toast.success(archived ? "Suite restored" : "Suite archived"); load();
-    } catch { toast.error("Failed"); }
-  };
+const handleClone = async (id: string) => {
+  if (!projectId) return;
+  try {
+    await apiClient.post(
+      `/api/projects/${projectId}/test-suites/${id}/clone`
+    );
+    toast.success("Suite cloned");
+    load();
+  } catch {
+    toast.error("Failed");
+  }
+};
 
-  const handleAddTc = async () => {
-    if (!addTcModal || !tcId) return;
-    try { await apiClient.post(`/test-suites/${addTcModal}/test-cases`, { testCaseId: tcId }); toast.success("Test case added"); setAddTcModal(null); setTcId(""); load(); }
-    catch { toast.error("Failed to add test case"); }
-  };
+const handleArchive = async (id: string, archived: boolean) => {
+  if (!projectId) return;
+  try {
+    await apiClient.patch(
+      `/api/projects/${projectId}/test-suites/${id}/${
+        archived ? "restore" : "archive"
+      }`
+    );
+    toast.success(
+      archived ? "Suite restored" : "Suite archived"
+    );
+    load();
+  } catch {
+    toast.error("Failed");
+  }
+};
 
-  const handleRemoveTc = async (suiteId: string, tcIdToRemove: string) => {
-    try { await apiClient.delete(`/test-suites/${suiteId}/test-cases`, { data: { testCaseId: tcIdToRemove } }); toast.success("Removed"); load(); }
-    catch { toast.error("Failed"); }
-  };
+const handleAddTc = async () => {
+  if (!projectId || !addTcModal || !tcId) return;
+  try {
+    await apiClient.post(
+      `/api/projects/${projectId}/test-suites/${addTcModal}/test-cases`,
+      { testCaseId: tcId }
+    );
+    toast.success("Test case added");
+    setAddTcModal(null);
+    setTcId("");
+    load();
+  } catch {
+    toast.error("Failed to add test case");
+  }
+};
 
-  const handleExecute = async () => {
-    if (!execModal) return;
-    try { await apiClient.post(`/test-suites/${execModal}/execute`, { executionMode: execMode }); toast.success("Suite execution started"); setExecModal(null); }
-    catch { toast.error("Failed to start execution"); }
-  };
+const handleRemoveTc = async (
+  suiteId: string,
+  tcIdToRemove: string
+) => {
+  if (!projectId) return;
+  try {
+    await apiClient.delete(
+      `/api/projects/${projectId}/test-suites/${suiteId}/test-cases`,
+      { data: { testCaseId: tcIdToRemove } }
+    );
+    toast.success("Removed");
+    load();
+  } catch {
+    toast.error("Failed");
+  }
+};
+
+const handleExecute = async () => {
+  if (!projectId || !execModal) return;
+  try {
+    await apiClient.post(
+      `/api/projects/${projectId}/test-suites/${execModal}/execute`,
+      { executionMode: execMode }
+    );
+    toast.success("Suite execution started");
+    setExecModal(null);
+  } catch {
+    toast.error("Failed to start execution");
+  }
+};
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease" }}>

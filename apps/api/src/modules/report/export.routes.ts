@@ -41,7 +41,7 @@ const router: Router = Router();
  *         description: Forbidden
  */
 router.get(
-  "/test-execution/:testRunId/export",
+  "/:projectId/export/test-execution/:testRunId",
   authenticate,
   authorize([UserRole.TESTER, UserRole.DEVELOPER]),
   exportTestExecutionController
@@ -71,7 +71,7 @@ router.get(
  *         description: Forbidden
  */
 router.get(
-  "/bug/export",
+  "/:projectId/export/bugs",
   authenticate,
   authorize([UserRole.TESTER, UserRole.DEVELOPER, UserRole.ADMIN]),
   exportBugReportController

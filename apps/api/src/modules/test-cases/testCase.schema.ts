@@ -7,6 +7,7 @@ import { TestCasePriority, TestCaseStatus } from "@prisma/client";
 
 export const createTestCaseSchema = z.object({
   title: z.string().min(1).max(200),
+  projectId: z.string().cuid().optional(),
   description: z.string().min(1),
 
   module: z.string().min(1),

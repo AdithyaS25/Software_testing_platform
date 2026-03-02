@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../../lib/axios";
 import { useAuth } from "../../../app/providers/AuthProvider";
 import { Button, Badge, EmptyState, Modal, FormField, useToast, Spinner } from "../../../shared/components/ui";
+import { useParams } from "react-router-dom";
 
 export const TestRunsPage = () => {
+  const { projectId } = useParams<{ projectId: string }>();
   const { user } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
@@ -14,30 +16,57 @@ export const TestRunsPage = () => {
   const [form, setForm] = useState({ name: "", description: "", startDate: "", endDate: "", testCaseIds: "" });
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
-
   const canCreate = user?.role === "ADMIN" || user?.role === "DEVELOPER";
 
   const load = () => {
-    setLoading(true);
-    apiClient.get("/test-runs").then(r => { setRuns(r.data.data || r.data || []); setLoading(false); }).catch(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, []);
+  if (!projectId) return;
+  setLoading(true);
+  apiClient
+    .get(`/api/projects/${projectId}/test-runs`)
+    .then((r) => {
+      setRuns(r.data.data || r.data || []);
+      setLoading(false);
+    })
+    .catch(() => setLoading(false));
+};
 
-  const handleCreate = async () => {
-    setSaving(true);
-    try {
-      const payload = {
-        ...form,
-        testCaseIds: form.testCaseIds.split(",").map(s => s.trim()).filter(Boolean),
-      };
-      await apiClient.post("/test-runs", payload);
-      toast.success("Test run created");
-      setCreateModal(false);
-      setForm({ name: "", description: "", startDate: "", endDate: "", testCaseIds: "" });
-      load();
-    } catch { toast.error("Failed to create test run"); }
-    finally { setSaving(false); }
-  };
+useEffect(() => {
+  load();
+}, [projectId]);
+
+const handleCreate = async () => {
+  if (!projectId) return;
+  setSaving(true);
+  try {
+    const payload = {
+      ...form,
+      testCaseIds: form.testCaseIds
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    };
+
+    await apiClient.post(
+      `/api/projects/${projectId}/test-runs`,
+      payload
+    );
+
+    toast.success("Test run created");
+    setCreateModal(false);
+    setForm({
+      name: "",
+      description: "",
+      startDate: "",
+      endDate: "",
+      testCaseIds: "",
+    });
+    load();
+  } catch {
+    toast.error("Failed to create test run");
+  } finally {
+    setSaving(false);
+  }
+};
 
   const progressColor = (pct: number) => pct >= 80 ? "var(--success)" : pct >= 50 ? "var(--warning)" : "var(--danger)";
 

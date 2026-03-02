@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiClient } from "../../../lib/axios";
-import { Button, StatusBadge, Modal, FormField, useToast, Spinner } from "../../../shared/components/ui";
+import { Button, Modal, FormField, useToast, Spinner } from "../../../shared/components/ui";
 
 type StepStatus = "PENDING" | "PASS" | "FAIL" | "BLOCKED" | "SKIPPED";
 
@@ -119,7 +119,7 @@ export const ExecutionPage = () => {
           <h1 style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--text-primary)" }}>Executing: {tc?.title}</h1>
           <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: 2 }}>{completed} of {steps.length} steps completed</p>
         </div>
-        <div style={{ display: "flex", align: "center", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
           {/* Timer */}
           <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "8px 14px", fontFamily: "var(--font-mono)", fontSize: "1.1rem", color: timerActive ? "var(--success)" : "var(--warning)" }}>
             {fmt(timer)}

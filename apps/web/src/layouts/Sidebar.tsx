@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../app/providers/AuthProvider";
 
 interface NavItem {
@@ -10,17 +10,18 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: "/dashboard",   label: "Dashboard",    icon: "▦" },
-  { path: "/test-cases",  label: "Test Cases",   icon: "✎",  roles: ["ADMIN", "TESTER", "DEVELOPER"] },
-  { path: "/test-suites", label: "Test Suites",  icon: "⊞",  roles: ["ADMIN", "TESTER"] },
-  { path: "/test-runs",   label: "Test Runs",    icon: "▷",  roles: ["ADMIN", "TESTER", "DEVELOPER"] },
-  { path: "/bugs",        label: "Bugs",         icon: "⚠",  roles: ["ADMIN", "TESTER", "DEVELOPER"] },
-  { path: "/reports",     label: "Reports",      icon: "⊡",  roles: ["ADMIN", "TESTER", "DEVELOPER"] },
+  { path: "dashboard",   label: "Dashboard",   icon: "▦" },
+  { path: "test-cases",  label: "Test Cases",  icon: "✎", roles: ["ADMIN", "TESTER", "DEVELOPER"] },
+  { path: "test-suites", label: "Test Suites", icon: "⊞", roles: ["ADMIN", "TESTER"] },
+  { path: "test-runs",   label: "Test Runs",   icon: "▷", roles: ["ADMIN", "TESTER", "DEVELOPER"] },
+  { path: "bugs",        label: "Bugs",        icon: "⚠", roles: ["ADMIN", "TESTER", "DEVELOPER"] },
+  { path: "reports",     label: "Reports",     icon: "⊡", roles: ["ADMIN", "TESTER", "DEVELOPER"] },
 ];
 
 export const Sidebar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const { projectId } = useParams();
 
   const visible = navItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
 
@@ -52,9 +53,12 @@ export const Sidebar = () => {
       <nav style={{ flex: 1, padding: "12px 8px", overflowY: "auto" }}>
         <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", padding: "0 12px", marginBottom: 6 }}>Navigation</div>
         {visible.map(item => {
+          const fullPath = projectId
+            ? `/projects/${projectId}/${item.path}`
+            : "/projects";
           const isActive = location.pathname.startsWith(item.path);
           return (
-            <NavLink key={item.path} to={item.path} style={{ textDecoration: "none" }}>
+            <NavLink key={item.path} to={fullPath} style={{ textDecoration: "none" }}>
               <div style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "8px 12px", borderRadius: "var(--radius-md)",

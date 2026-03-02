@@ -3,16 +3,24 @@ import { TestExecutionReport } from "./report.types";
 import { ExecutionStatus, StepStatus } from "@prisma/client";
 
 export async function generateTestExecutionReport(
+  projectId: string,
   testRunId: string
-): Promise<TestExecutionReport> {
+){
 
-  const testRun = await prisma.testRun.findUnique({
-    where: { id: testRunId }
+  const testRun = await prisma.testRun.findFirst({
+    where: { 
+      id: testRunId, 
+      projectId 
+    },
+      include: {
+      executions: true,
+    },
   });
 
   if (!testRun) {
-    throw new Error("Test Run not found");
+    throw new Error("Test Run not found for this project");
   }
+
 
   // =============================
   // SUMMARY

@@ -1,6 +1,7 @@
 import { prisma } from "../../prisma";
 
 export const createTestRunService = async (
+  projectId: string,
   name: string,
   description: string | undefined,
   startDate: Date,
@@ -8,56 +9,57 @@ export const createTestRunService = async (
   testCaseIds: string[],
   createdById: string
 ) => {
-  return await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     const testRun = await tx.testRun.create({
-  data: {
-    name,
-    description: description ?? null,
-    startDate,
-    endDate,
-    createdById,
-  },
-});
-
-
-    const testRunCases = testCaseIds.map((testCaseId) => ({
-      testRunId: testRun.id,
-      testCaseId,
-    }));
-
-    await tx.testRunTestCase.createMany({
-      data: testRunCases,
+      data: {
+        name,
+        description: description ?? null,
+        startDate,
+        endDate,
+        createdById,
+        projectId,
+      },
     });
+
+    if (testCaseIds?.length) {
+      await tx.testRunTestCase.createMany({
+        data: testCaseIds.map((testCaseId) => ({
+          testRunId: testRun.id,
+          testCaseId,
+        })),
+      });
+    }
 
     return testRun;
   });
 };
 
-export const getAllTestRunsService = async () => {
-  const runs = await prisma.testRun.findMany({
+export const getAllTestRunsService = async (
+  projectId: string
+) => {
+  return prisma.testRun.findMany({
+    where: { projectId },
     include: {
       testCases: {
-        include: {
-          testCase: true,
-          assignedTo: true,
-        },
+        include: { testCase: true },
       },
       createdBy: true,
     },
   });
+};
 
-  return runs.map((run) => {
-    const total = run.testCases.length;
-    const completed = run.testCases.filter(
-      (tc) => tc.status === "COMPLETED"
-    ).length;
-
-    const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
-
-    return {
-      ...run,
-      progress,
-    };
+export const getTestRunByIdService = async (
+  projectId: string,
+  id: string
+) => {
+  return prisma.testRun.findFirst({
+    where: { id, projectId },
+    include: {
+      testCases: {
+        include: { testCase: true },
+      },
+      createdBy: true,
+    },
   });
 };
 
@@ -67,38 +69,6 @@ export const assignTestRunCaseService = async (
 ) => {
   return prisma.testRunTestCase.update({
     where: { id: testRunTestCaseId },
-    data: {
-      assignedToId,
-    },
+    data: { assignedToId },
   });
 };
-
-export const getTestRunByIdService = async (id: string) => {
-  const run = await prisma.testRun.findUnique({
-    where: { id },
-    include: {
-      testCases: {
-        include: {
-          testCase: true,
-          assignedTo: true,
-        },
-      },
-      createdBy: true,
-    },
-  });
-
-  if (!run) return null;
-
-  const total = run.testCases.length;
-  const completed = run.testCases.filter(
-    (tc) => tc.status === "COMPLETED"
-  ).length;
-
-  const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
-
-  return {
-    ...run,
-    progress,
-  };
-};
-

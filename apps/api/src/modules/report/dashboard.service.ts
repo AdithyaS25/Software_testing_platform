@@ -2,35 +2,51 @@ import { prisma } from "../../prisma";
 import { DashboardReport } from "./dashboard.types";
 
 export const generateDashboardReport =
-  async (): Promise<DashboardReport> => {
+  async (projectId: string): Promise<DashboardReport> => {
     // =============================
-    // SUMMARY METRICS
+    // SUMMARY METRICS (PROJECT SCOPED)
     // =============================
 
-    const totalTestRuns = await prisma.testRun.count();
-    const totalExecutions = await prisma.execution.count();
-    const totalBugs = await prisma.bug.count();
+    const totalTestRuns = await prisma.testRun.count({
+      where: { projectId },
+    });
+
+    const totalExecutions = await prisma.execution.count({
+      where: {
+        testRun: { projectId },
+      },
+    });
+
+    const totalBugs = await prisma.bug.count({
+      where: { projectId },
+    });
 
     const passedExecutions = await prisma.execution.count({
-      where: { overallResult: "PASS" },
+      where: {
+        overallResult: "PASS",
+        testRun: { projectId },
+      },
     });
 
     const overallPassRate =
       totalExecutions > 0
         ? Number(
-            (
-              (passedExecutions / totalExecutions) *
-              100
-            ).toFixed(1)
+            ((passedExecutions / totalExecutions) * 100).toFixed(1)
           )
         : 0;
 
     const openBugs = await prisma.bug.count({
-      where: { resolvedAt: null },
+      where: {
+        projectId,
+        resolvedAt: null,
+      },
     });
 
     const criticalBugs = await prisma.bug.count({
-      where: { severity: "CRITICAL" },
+      where: {
+        projectId,
+        severity: "CRITICAL",
+      },
     });
 
     // =============================
@@ -41,7 +57,7 @@ export const generateDashboardReport =
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     // =============================
-    // EXECUTION TREND
+    // EXECUTION TREND (PROJECT SCOPED)
     // =============================
 
     const executions = await prisma.execution.findMany({
@@ -50,6 +66,7 @@ export const generateDashboardReport =
           not: null,
           gte: sevenDaysAgo,
         },
+        testRun: { projectId },
       },
       select: { completedAt: true },
     });
@@ -59,28 +76,26 @@ export const generateDashboardReport =
     executions.forEach((e) => {
       if (!e.completedAt) return;
 
-      const iso = e.completedAt.toISOString();
-      const date = iso.split("T")[0];
-
+      const date = e.completedAt.toISOString().split("T")[0];
       if (!date) return;
 
-      executionMap[date] =
-        (executionMap[date] ?? 0) + 1;
+      executionMap[date] = (executionMap[date] ?? 0) + 1;
     });
 
-    const executionTrend = Object.entries(
-      executionMap
-    ).map(([date, total]) => ({
-      date,
-      total,
-    }));
+    const executionTrend = Object.entries(executionMap).map(
+      ([date, total]) => ({
+        date,
+        total,
+      })
+    );
 
     // =============================
-    // BUG TREND
+    // BUG TREND (PROJECT SCOPED)
     // =============================
 
     const bugs = await prisma.bug.findMany({
       where: {
+        projectId,
         createdAt: { gte: sevenDaysAgo },
       },
       select: { createdAt: true },
@@ -89,13 +104,10 @@ export const generateDashboardReport =
     const bugMap: Record<string, number> = {};
 
     bugs.forEach((b) => {
-      const iso = b.createdAt.toISOString();
-      const date = iso.split("T")[0];
-
+      const date = b.createdAt.toISOString().split("T")[0];
       if (!date) return;
 
-      bugMap[date] =
-        (bugMap[date] ?? 0) + 1;
+      bugMap[date] = (bugMap[date] ?? 0) + 1;
     });
 
     const bugTrend = Object.entries(bugMap).map(
@@ -118,4 +130,3 @@ export const generateDashboardReport =
       bugTrend,
     };
   };
-  

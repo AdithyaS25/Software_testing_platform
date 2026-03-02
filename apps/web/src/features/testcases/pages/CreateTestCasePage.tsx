@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../../../lib/axios";
 import { Button, FormField, useToast } from "../../../shared/components/ui";
 
@@ -8,6 +8,7 @@ interface Step { stepNumber: number; action: string; expectedResult: string; tes
 export const CreateTestCasePage = () => {
   const nav = useNavigate();
   const toast = useToast();
+  const { projectId } = useParams<{ projectId: string }>(); // ← added
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     title: "", description: "", module: "", priority: "MEDIUM", severity: "MAJOR",
@@ -26,7 +27,9 @@ export const CreateTestCasePage = () => {
     setSteps(p => p.map((s, idx) => idx === i ? { ...s, [k]: e.target.value } : s));
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true);
+    e.preventDefault();
+    if (!projectId) { toast.error("No project selected"); return; }
+    setLoading(true);
     try {
       const payload = {
         ...form,
@@ -34,9 +37,10 @@ export const CreateTestCasePage = () => {
         estimatedDuration: form.estimatedDuration ? parseInt(form.estimatedDuration) : undefined,
         steps: steps.filter(s => s.action),
       };
-      await apiClient.post("/test-cases", payload);
+      // was: /test-cases
+      await apiClient.post(`/api/projects/${projectId}/test-cases`, payload);
       toast.success("Test case created successfully!");
-      nav("/test-cases");
+      nav(`/projects/${projectId}/test-cases`); // was: /test-cases
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to create test case");
     } finally { setLoading(false); }
@@ -61,13 +65,12 @@ export const CreateTestCasePage = () => {
           <p className="page-subtitle">Define a new test case with steps and metadata</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <Button variant="secondary" onClick={() => nav("/test-cases")}>Cancel</Button>
+          <Button variant="secondary" onClick={() => nav(`/projects/${projectId}/test-cases`)}>Cancel</Button>
           <Button loading={loading} onClick={handleSubmit as any}>Save Test Case</Button>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Basic Info */}
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, marginBottom: 16 }}>
           <Section title="Basic Information">
             <FormField label="Title" required>
@@ -109,7 +112,6 @@ export const CreateTestCasePage = () => {
           </Section>
         </div>
 
-        {/* Pre/Post conditions */}
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, marginBottom: 16 }}>
           <Section title="Pre-conditions">
             <FormField label="Pre-conditions">
@@ -126,7 +128,6 @@ export const CreateTestCasePage = () => {
           </Section>
         </div>
 
-        {/* Test Steps */}
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, paddingBottom: 8, borderBottom: "1px solid var(--border-subtle)" }}>
             <h3 style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Test Steps</h3>
@@ -158,7 +159,6 @@ export const CreateTestCasePage = () => {
           </div>
         </div>
 
-        {/* Post-conditions & metadata */}
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, marginBottom: 16 }}>
           <Section title="Post-conditions & Metadata">
             <Row>
@@ -186,7 +186,7 @@ export const CreateTestCasePage = () => {
         </div>
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 8 }}>
-          <Button variant="secondary" onClick={() => nav("/test-cases")} type="button">Cancel</Button>
+          <Button variant="secondary" onClick={() => nav(`/projects/${projectId}/test-cases`)} type="button">Cancel</Button>
           <Button loading={loading} type="submit">Save Test Case</Button>
         </div>
       </form>

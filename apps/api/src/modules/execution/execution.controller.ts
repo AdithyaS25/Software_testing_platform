@@ -211,6 +211,7 @@ export const failAndCreateBugController: RequestHandler =
             testCaseId: execution.testCaseId,
             executionId,
             executionStepId: stepId,
+            projectId: execution.testCase.projectId ?? 'default-project-001',
           },
         });
 
