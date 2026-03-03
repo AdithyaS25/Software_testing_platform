@@ -74,11 +74,11 @@ export const DashboardPage = () => {
       <Card style={{ padding: 20 }}>
         <h3 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 14, letterSpacing: "0.04em", textTransform: "uppercase" }}>Quick Actions</h3>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {isTester && <QuickAction to="/test-cases/new" icon="✎" label="New Test Case" color="var(--accent)" />}
-          {isTester && <QuickAction to="/test-suites"    icon="⊞" label="View Suites"   color="var(--purple)" />}
-          {isTester && <QuickAction to="/test-runs"      icon="▷" label="Test Runs"     color="var(--success)" />}
-          <QuickAction to="/bugs"    icon="⚠"  label="View Bugs" color="var(--danger)" />
-          <QuickAction to="/reports" icon="⊡"  label="Reports"   color="var(--warning)" />
+          {isTester && <QuickAction to={`/projects/${projectId}/test-cases/new`} icon="✎" label="New Test Case" color="var(--accent)" />}
+          {isTester && <QuickAction to={`/projects/${projectId}/test-suites`}    icon="⊞" label="View Suites"   color="var(--purple)" />}
+          {isTester && <QuickAction to={`/projects/${projectId}/test-runs`}      icon="▷" label="Test Runs"     color="var(--success)" />}
+          <QuickAction to={`/projects/${projectId}/bugs`}    icon="⚠"  label="View Bugs" color="var(--danger)" />
+          <QuickAction to={`/projects/${projectId}/reports`} icon="⊡"  label="Reports"   color="var(--warning)" />
         </div>
       </Card>
     </div>

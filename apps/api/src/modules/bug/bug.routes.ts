@@ -4,17 +4,16 @@ import { authenticate, authorize } from "../../middleware/auth.middleware";
 import { asHandler } from "../../utils/async-handler";
 import {
   createBugController,
-  updateBugStatusController,
   getBugsController,
   getMyBugsController,
+  getBugByIdController,
+  updateBugStatusController,
   assignBugController,
-  addBugCommentController,
-  getBugCommentsController,
-  updateBugCommentController,
-  deleteBugCommentController,
+  addCommentController,
+  deleteCommentController,
 } from "./bug.controller";
 
-const router: Router = Router({ mergeParams: true }); // ← mergeParams so req.params.projectId is available
+const router: Router = Router({ mergeParams: true });
 
 // POST /api/projects/:projectId/bugs
 router.post(
@@ -24,7 +23,7 @@ router.post(
   asHandler(createBugController)
 );
 
-// GET /api/projects/:projectId/bugs/my  ← must be BEFORE /:id routes
+// GET /api/projects/:projectId/bugs/my  ← must be BEFORE /:id
 router.get(
   "/my",
   asHandler(authenticate),
@@ -37,6 +36,13 @@ router.get(
   "/",
   asHandler(authenticate),
   asHandler(getBugsController)
+);
+
+// GET /api/projects/:projectId/bugs/:id
+router.get(
+  "/:id",
+  asHandler(authenticate),
+  asHandler(getBugByIdController)
 );
 
 // PATCH /api/projects/:projectId/bugs/:id/status
@@ -58,28 +64,14 @@ router.patch(
 router.post(
   "/:id/comments",
   asHandler(authenticate),
-  asHandler(addBugCommentController)
-);
-
-// GET /api/projects/:projectId/bugs/:id/comments
-router.get(
-  "/:id/comments",
-  asHandler(authenticate),
-  asHandler(getBugCommentsController)
-);
-
-// PATCH /api/projects/:projectId/bugs/comments/:id
-router.patch(
-  "/comments/:id",
-  asHandler(authenticate),
-  asHandler(updateBugCommentController)
+  asHandler(addCommentController)
 );
 
 // DELETE /api/projects/:projectId/bugs/comments/:id
 router.delete(
   "/comments/:id",
   asHandler(authenticate),
-  asHandler(deleteBugCommentController)
+  asHandler(deleteCommentController)
 );
 
 export default router;

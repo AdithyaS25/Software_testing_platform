@@ -1,3 +1,5 @@
+// File: apps/web/src/lib/projectApi.ts
+
 export const projectApi = (projectId: string) => ({
   testCases:  `/api/projects/${projectId}/test-cases`,
   testSuites: `/api/projects/${projectId}/test-suites`,
@@ -7,7 +9,8 @@ export const projectApi = (projectId: string) => ({
   milestones: `/api/projects/${projectId}/milestones`,
   reports: {
     dashboard:       `/api/projects/${projectId}/reports/dashboard`,
-    bugExport:       `/api/projects/${projectId}/reports/export/bugs`,
+    bugs:            `/api/projects/${projectId}/reports/bugs`,            // JSON stats
+    bugExport:       `/api/projects/${projectId}/reports/export/bugs`,     // CSV download
     testExecution:   (testRunId: string) => `/api/projects/${projectId}/reports/test-execution/${testRunId}`,
     exportExecution: (testRunId: string) => `/api/projects/${projectId}/reports/export/test-execution/${testRunId}`,
   },

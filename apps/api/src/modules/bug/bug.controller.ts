@@ -1,488 +1,123 @@
+/// <reference path="../../types/express.d.ts" />
 import { Request, Response } from "express";
-import { prisma } from "../../prisma";
-import { AuthenticatedRequest } from "../../types/auth-request";
-import { BugStatus, BugPriority, BugSeverity } from "@prisma/client";
+import {
+  createBugSchema, updateBugStatusSchema,
+  assignBugSchema, createBugCommentSchema,
+} from "./bug.schema";
+import {
+  createBug, listBugs, listMyBugs, getBugById,
+  updateBugStatus, assignBug, addBugComment, deleteBugComment,
+} from "./bug.service";
 
-/**
- * Allowed status transitions (workflow enforcement)
- */
-const allowedTransitions: Record<string, string[]> = {
-  NEW: ["OPEN", "WONT_FIX", "DUPLICATE"],
-  OPEN: ["IN_PROGRESS"],
-  IN_PROGRESS: ["FIXED"],
-  FIXED: ["VERIFIED", "REOPENED"],
-  VERIFIED: ["CLOSED"],
-  REOPENED: ["IN_PROGRESS"],
-};
+/* ── Create Bug ─────────────────────────────────────────── */
+export async function createBugController(req: Request, res: Response) {
+  const projectId = req.params.projectId as string;
+  const userId    = req.user?.id!;
 
-/**
- * Role-based status permissions
- */
-const roleBasedTransitions: Record<string, string[]> = {
-  TESTER: [
-    "OPEN",
-    "WONT_FIX",
-    "DUPLICATE",
-    "VERIFIED",
-    "REOPENED",
-    "CLOSED",
-  ],
-  DEVELOPER: [
-    "IN_PROGRESS",
-    "FIXED",
-  ],
-};
-
-/**
- * FR-BUG-001 — Manual Bug Creation
- */
-export const createBugController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const projectId = String(req.params.projectId);
-
-    const {
-      title,
-      description,
-      stepsToReproduce,
-      expectedBehavior,
-      actualBehavior,
-      severity,
-      priority,
-      environment,
-      affectedVersion,
-      assignedToId,
-      testCaseId,
-    } = req.body;
-
-    if (
-      !title ||
-      !description ||
-      !expectedBehavior ||
-      !actualBehavior ||
-      !severity ||
-      !priority
-    ) {
-      return res.status(400).json({
-        message: "Missing required fields",
-      });
-    }
-
-    // Project-scoped count
-    const bugCount = await prisma.bug.count({
-      where: { projectId },
-    });
-
-    const bugId = `BUG-${new Date().getFullYear()}-${String(
-      bugCount + 1
-    ).padStart(5, "0")}`;
-
-    const bug = await prisma.bug.create({
-      data: {
-        bugId,
-        title,
-        description,
-        stepsToReproduce,
-        expectedBehavior,
-        actualBehavior,
-        severity,
-        priority,
-        status: BugStatus.NEW,
-        environment,
-        affectedVersion,
-        projectId, // 🔥 REQUIRED
-
-        ...(assignedToId && {
-          assignedTo: { connect: { id: assignedToId } },
-        }),
-
-        ...(testCaseId && {
-          testCase: { connect: { id: testCaseId } },
-        }),
-      },
-    });
-
-    return res.status(201).json(bug);
-  } catch (error: unknown) {
-    return res.status(500).json({
-      message: "Internal server error",
-    });
+  const parsed = createBugSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, message: "Validation error", errors: parsed.error.flatten() });
   }
-};
 
-/**
- * FR-BUG-002 — Update Bug Status (Workflow + Role Enforcement)
- */
-export const updateBugStatusController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const bugId = String(req.params.id);
-    const { status, fixNotes } = req.body;
-    const userRole = req.user?.role;
-
-    if (!status) {
-      return res.status(400).json({
-        message: "Status is required",
-      });
-    }
-
-    const bug = await prisma.bug.findUnique({
-      where: { id: bugId },
-    });
-
-    if (!bug) {
-      return res.status(404).json({
-        message: "Bug not found",
-      });
-    }
-
-    const currentStatus = bug.status;
-    const allowed = allowedTransitions[currentStatus] || [];
-
-    // 1️⃣ Validate workflow transition
-    if (!allowed.includes(status)) {
-      return res.status(400).json({
-        message: `Invalid status transition from ${currentStatus} to ${status}`,
-      });
-    }
-
-    // 2️⃣ Validate role permission
-    if (
-      !userRole ||
-      !roleBasedTransitions[userRole]?.includes(status)
-    ) {
-      return res.status(403).json({
-        message: `Role ${userRole} not allowed to move bug to ${status}`,
-      });
-    }
-
-    // 3️⃣ Require fix notes when marking FIXED
-    if (status === "FIXED" && !fixNotes) {
-      return res.status(400).json({
-        message: "Fix notes are required when marking bug as FIXED",
-      });
-    }
-
-    const updateData: any = {
-  status: status as BugStatus,
-};
-
-if (status === "FIXED") {
-  updateData.fixNotes = fixNotes;
-  updateData.resolvedAt = new Date();
-  updateData.resolvedById = req.user?.id;
+  const bug = await createBug(projectId, parsed.data, userId);
+  return res.status(201).json({ success: true, data: bug });
 }
 
-const updatedBug = await prisma.bug.update({
-  where: { id: bugId },
-  data: updateData,
-});
+/* ── List Bugs ──────────────────────────────────────────── */
+export async function getBugsController(req: Request, res: Response) {
+  const projectId = String(req.params.projectId);
+  const q = req.query as Record<string, string | undefined>;
+  const filters = {
+    ...(q.status   ? { status:   q.status }   : {}),
+    ...(q.priority ? { priority: q.priority } : {}),
+    ...(q.severity ? { severity: q.severity } : {}),
+  };
+  const bugs = await listBugs(projectId, filters);
+  return res.status(200).json({ success: true, data: bugs });
+}
 
-    return res.status(200).json(updatedBug);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      return res.status(400).json({ message: error.message });
-    }
+/* ── Update Status ──────────────────────────────────────── */
+export async function updateBugStatusController(req: Request, res: Response) {
+  const projectId = String(req.params.projectId);
+const id        = String(req.params.id);
+  const userId = req.user?.id!;
 
-    return res.status(500).json({
-      message: "Internal server error",
-    });
+  const parsed = updateBugStatusSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, message: "Validation error", errors: parsed.error.flatten() });
   }
-};
 
+  const bug = await updateBugStatus(projectId, id, parsed.data, userId);
+  if (!bug) return res.status(404).json({ success: false, message: "Bug not found" });
 
-export const getMyBugsController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const userId = req.user?.id;
-    const projectId = String(req.params.projectId);
+  return res.status(200).json({ success: true, data: bug });
+}
 
-    if (!projectId) {
-      return res.status(400).json({ message: "Project ID is required" });
-    }
+/* ── Assign Bug ─────────────────────────────────────────── */
+export async function assignBugController(req: Request, res: Response) {
+  const projectId = String(req.params.projectId);
+const id        = String(req.params.id);
 
-    const bugs = await prisma.bug.findMany({
-      where: {
-        projectId,                                    // ← scoped to project
-        ...(userId ? { assignedToId: userId } : {}),
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    return res.status(200).json(bugs);
-  } catch (error: unknown) {
-    return res.status(500).json({ message: "Failed to fetch assigned bugs" });
+  const parsed = assignBugSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, message: "Validation error", errors: parsed.error.flatten() });
   }
-};
 
-export const getBugsController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const projectId = String(req.params.projectId);
+  const bug = await assignBug(projectId, id, parsed.data);
+  if (!bug) return res.status(404).json({ success: false, message: "Bug not found" });
 
-    if (!projectId) {
-      return res.status(400).json({ message: "Project ID is required" });
-    }
+  return res.status(200).json({ success: true, data: bug });
+}
 
-    const { status, priority, severity, sortBy, order } = req.query;
+/* ── Add Comment ────────────────────────────────────────── */
+export async function addCommentController(req: Request, res: Response) {
+  const projectId = String(req.params.projectId);
+const id        = String(req.params.id);
+  const userId = req.user?.id!;
 
-    const where: any = { projectId };   // ← scoped to project
-
-    if (status && Object.values(BugStatus).includes(status as BugStatus)) {
-      where.status = status as BugStatus;
-    }
-
-    if (priority && Object.values(BugPriority).includes(priority as BugPriority)) {
-      where.priority = priority as BugPriority;
-    }
-
-    if (severity && Object.values(BugSeverity).includes(severity as BugSeverity)) {
-      where.severity = severity as BugSeverity;
-    }
-
-    const bugs = await prisma.bug.findMany({
-      where,
-      orderBy: sortBy
-        ? { [String(sortBy)]: order === "asc" ? "asc" : "desc" }
-        : { createdAt: "desc" },
-    });
-
-    return res.status(200).json(bugs);
-  } catch (error: unknown) {
-    return res.status(500).json({ message: "Failed to fetch bugs" });
+  const parsed = createBugCommentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, message: "Validation error", errors: parsed.error.flatten() });
   }
-};
 
-export const assignBugController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const bugId = String(req.params.id);
-    const { assignedToId } = req.body;
+  const comment = await addBugComment(projectId, id, parsed.data, userId);
+  if (!comment) return res.status(404).json({ success: false, message: "Bug not found" });
 
-    if (!assignedToId) {
-      return res.status(400).json({
-        message: "assignedToId is required",
-      });
-    }
+  return res.status(201).json({ success: true, data: comment });
+}
 
-    // Ensure bug exists
-    const bug = await prisma.bug.findUnique({
-      where: { id: bugId },
-    });
+/* ── Delete Comment ─────────────────────────────────────── */
+export async function deleteCommentController(req: Request, res: Response) {
+  const id     = String(req.params.id); // ← was: const { id } = req.params
+  const userId = req.user?.id!;
 
-    if (!bug) {
-      return res.status(404).json({
-        message: "Bug not found",
-      });
-    }
+  const comment = await deleteBugComment(id, userId);
+  if (!comment) return res.status(404).json({ success: false, message: "Comment not found or unauthorized" });
 
-    // Ensure user exists and is DEVELOPER
-    const user = await prisma.user.findUnique({
-      where: { id: assignedToId },
-    });
+  return res.status(200).json({ success: true, message: "Comment deleted" });
+}
 
-    if (!user || user.role !== "DEVELOPER") {
-      return res.status(400).json({
-        message: "Assigned user must be a DEVELOPER",
-      });
-    }
+/* ── My Bugs ────────────────────────────────────────────── */
+export async function getMyBugsController(req: Request, res: Response) {
+  const projectId = String(req.params.projectId);
+  const userId    = req.user?.id!;
+  const q = req.query as Record<string, string | undefined>;
+  const filters = {
+    ...(q.status   ? { status:   q.status }   : {}),
+    ...(q.priority ? { priority: q.priority } : {}),
+    ...(q.severity ? { severity: q.severity } : {}),
+  };
+  const bugs = await listMyBugs(projectId, userId, filters);
+  return res.status(200).json({ success: true, data: bugs });
+}
 
-    const updatedBug = await prisma.bug.update({
-      where: { id: bugId },
-      data: {
-        assignedToId,
-      },
-    });
+/* ── Get Bug by ID ──────────────────────────────────────── */
+export async function getBugByIdController(req: Request, res: Response) {
+  const projectId = String(req.params.projectId);
+  const id        = String(req.params.id);
 
-    return res.status(200).json(updatedBug);
-  } catch (error: unknown) {
-    return res.status(500).json({
-      message: "Failed to assign bug",
-    });
-  }
-};
+  const bug = await getBugById(projectId, id);
+  if (!bug) return res.status(404).json({ success: false, message: "Bug not found" });
 
-export const addBugCommentController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const bugId = String(req.params.id);
-    const { content } = req.body;
-
-    if (!content) {
-      return res.status(400).json({
-        message: "Comment content is required",
-      });
-    }
-
-    const bug = await prisma.bug.findUnique({
-      where: { id: bugId },
-    });
-
-    if (!bug) {
-      return res.status(404).json({
-        message: "Bug not found",
-      });
-    }
-
-    const comment = await prisma.bugComment.create({
-      data: {
-        content,
-        bugId,
-        authorId: req.user!.id,
-      },
-    });
-
-    return res.status(201).json(comment);
-  } catch (error: unknown) {
-    return res.status(500).json({
-      message: "Failed to add comment",
-    });
-  }
-};
-
-export const getBugCommentsController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const bugId = String(req.params.id);
-
-    const comments = await prisma.bugComment.findMany({
-      where: { bugId },
-      include: {
-        author: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-    return res.status(200).json(comments);
-  } catch (error: unknown) {
-    return res.status(500).json({
-      message: "Failed to fetch comments",
-    });
-  }
-};
-
-export const updateBugCommentController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const commentId = String(req.params.id);
-    const { content } = req.body;
-
-    if (!content) {
-      return res.status(400).json({
-        message: "Updated content is required",
-      });
-    }
-
-    const comment = await prisma.bugComment.findUnique({
-      where: { id: commentId },
-    });
-
-    if (!comment) {
-      return res.status(404).json({
-        message: "Comment not found",
-      });
-    }
-
-    // Author check
-    if (comment.authorId !== req.user!.id) {
-      return res.status(403).json({
-        message: "You can only edit your own comments",
-      });
-    }
-
-    // 5 minute rule
-    const FIVE_MINUTES = 5 * 60 * 1000;
-    const now = new Date().getTime();
-    const createdAt = new Date(comment.createdAt).getTime();
-
-    if (now - createdAt > FIVE_MINUTES) {
-      return res.status(403).json({
-        message: "Comment can only be edited within 5 minutes",
-      });
-    }
-
-    const updatedComment = await prisma.bugComment.update({
-      where: { id: commentId },
-      data: { content },
-    });
-
-    return res.status(200).json(updatedComment);
-  } catch {
-    return res.status(500).json({
-      message: "Failed to update comment",
-    });
-  }
-};
-
-export const deleteBugCommentController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const commentId = String(req.params.id);
-
-    const comment = await prisma.bugComment.findUnique({
-      where: { id: commentId },
-    });
-
-    if (!comment) {
-      return res.status(404).json({
-        message: "Comment not found",
-      });
-    }
-
-    // Author check
-    if (comment.authorId !== req.user!.id) {
-      return res.status(403).json({
-        message: "You can only delete your own comments",
-      });
-    }
-
-    // 5 minute rule
-    const FIVE_MINUTES = 5 * 60 * 1000;
-    const now = new Date().getTime();
-    const createdAt = new Date(comment.createdAt).getTime();
-
-    if (now - createdAt > FIVE_MINUTES) {
-      return res.status(403).json({
-        message: "Comment can only be deleted within 5 minutes",
-      });
-    }
-
-    await prisma.bugComment.delete({
-      where: { id: commentId },
-    });
-
-    return res.status(200).json({
-      message: "Comment deleted successfully",
-    });
-  } catch {
-    return res.status(500).json({
-      message: "Failed to delete comment",
-    });
-  }
-};
+  return res.status(200).json({ success: true, data: bug });
+}

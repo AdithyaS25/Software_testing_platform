@@ -9,7 +9,7 @@ export const ReportsPage = () => {
   const toast = useToast();
   const { projectId } = useParams<{ projectId: string }>(); // ← added
   const [params] = useSearchParams();
-  const [tab, setTab] = useState("bug");
+  const [tab, setTab] = useState(params.get("tab") || "bug"); // ← reads ?tab=exec from TestRunsPage
   const [loading, setLoading] = useState(false);
   const [bugReport, setBugReport] = useState<any>(null);
   const [execReport, setExecReport] = useState<any>(null);
@@ -27,7 +27,7 @@ export const ReportsPage = () => {
     setLoading(true);
     try {
       // was: /reports/bug
-      const r = await apiClient.get(`${base}/export/bugs`);
+      const r = await apiClient.get(`${base}/bugs`);
       setBugReport(r.data.data || r.data);
     }
     catch { toast.error("Failed to load bug report"); }

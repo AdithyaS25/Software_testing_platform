@@ -1,15 +1,15 @@
 // File: apps/web/src/features/projects/pages/ProjectsPage.tsx
 
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { projectApi } from '../api/projectApi';
-import type { Project, ProjectStatus } from '../types/project.types';
+import type { Project } from '../types/project.types';
 import CreateProjectModal from '../components/CreateProjectModal';
 
-const statusColors: Record<ProjectStatus, string> = {
-  ACTIVE: 'bg-green-100 text-green-800',
-  ARCHIVED: 'bg-gray-100 text-gray-600',
-  COMPLETED: 'bg-blue-100 text-blue-800',
+const statusStyle: Record<string, { bg: string; color: string }> = {
+  ACTIVE:    { bg: 'var(--success-muted, rgba(34,197,94,0.12))',  color: 'var(--success, #16a34a)' },
+  ARCHIVED:  { bg: 'var(--bg-elevated)',                          color: 'var(--text-muted)' },
+  COMPLETED: { bg: 'var(--accent-muted)',                         color: 'var(--accent)' },
 };
 
 export default function ProjectsPage() {
@@ -31,41 +31,70 @@ export default function ProjectsPage() {
     }
   };
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
+  useEffect(() => { fetchProjects(); }, []);
 
   const handleCreated = (project: Project) => {
     setShowCreateModal(false);
-    navigate(`/projects/${project.id}`);
+    navigate(`/projects/${project.id}/dashboard`);
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading projects...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: 80 }}>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading projects...</div>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
+      <div style={{ color: 'var(--danger)', fontSize: '0.9rem' }}>{error}</div>
+    </div>
+  );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div style={{ animation: 'fadeIn 0.3s ease' }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-          <p className="text-sm text-gray-500 mt-1">{projects.length} project{projects.length !== 1 ? 's' : ''}</p>
+          <h1 className="page-title">Projects</h1>
+          <p className="page-subtitle">
+            {projects.length} project{projects.length !== 1 ? 's' : ''}
+          </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'var(--accent)', color: '#fff',
+            border: 'none', borderRadius: 'var(--radius-md)',
+            padding: '8px 16px', fontSize: '0.875rem', fontWeight: 600,
+            cursor: 'pointer', transition: 'all var(--transition)',
+            fontFamily: 'var(--font-sans)',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
         >
-          + New Project
+          <span style={{ fontSize: '1rem' }}>+</span> New Project
         </button>
       </div>
 
       {/* Empty state */}
       {projects.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-          <p className="text-gray-400 text-lg mb-4">No projects yet</p>
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '80px 20px',
+          background: 'var(--bg-surface)', border: '1px dashed var(--border)',
+          borderRadius: 'var(--radius-lg)', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🗂</div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: 20 }}>No projects yet</p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-indigo-700"
+            style={{
+              background: 'var(--accent)', color: '#fff', border: 'none',
+              borderRadius: 'var(--radius-md)', padding: '9px 20px',
+              fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
+            }}
           >
             Create your first project
           </button>
@@ -73,41 +102,91 @@ export default function ProjectsPage() {
       )}
 
       {/* Project grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+        gap: 16,
+      }}>
         {projects.map((project) => (
-          <Link
+          <div
             key={project.id}
-            to={`/projects/${project.id}`}
-            className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition group"
+            onClick={() => navigate(`/projects/${project.id}/dashboard`)}
+            style={{
+              background: 'var(--bg-surface)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)', padding: 20,
+              cursor: 'pointer', transition: 'all var(--transition)',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--accent)';
+              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(61,111,255,0.1)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)';
+              (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+            }}
           >
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">
-                  {project.key}
-                </span>
-                <span
-                  className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[project.status]}`}
-                >
-                  {project.status}
-                </span>
-              </div>
+            {/* Top row: key + status */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{
+                background: 'var(--accent-muted)', color: 'var(--accent)',
+                fontSize: '0.72rem', fontWeight: 700, padding: '3px 8px',
+                borderRadius: 'var(--radius-sm)', letterSpacing: '0.06em',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                {project.key}
+              </span>
+              <span style={{
+                fontSize: '0.7rem', fontWeight: 600, padding: '3px 8px',
+                borderRadius: 10,
+                background: statusStyle[project.status]?.bg ?? 'var(--bg-elevated)',
+                color: statusStyle[project.status]?.color ?? 'var(--text-muted)',
+              }}>
+                {project.status}
+              </span>
             </div>
 
-            <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition text-base mb-1">
+            {/* Name */}
+            <h3 style={{
+              fontSize: '0.975rem', fontWeight: 700,
+              color: 'var(--text-primary)', marginBottom: 4,
+              letterSpacing: '-0.01em',
+            }}>
               {project.name}
             </h3>
+
+            {/* Description */}
             {project.description && (
-              <p className="text-sm text-gray-500 line-clamp-2 mb-4">
+              <p style={{
+                fontSize: '0.8rem', color: 'var(--text-muted)',
+                marginBottom: 14, lineHeight: 1.5,
+                display: '-webkit-box', WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical', overflow: 'hidden',
+              }}>
                 {project.description}
               </p>
             )}
 
-            <div className="flex items-center gap-4 text-xs text-gray-400 pt-3 border-t border-gray-100">
-              <span>🧪 {project._count?.testCases ?? 0} Tests</span>
-              <span>🐛 {project._count?.bugs ?? 0} Bugs</span>
-              <span>👥 {project._count?.members ?? 0} Members</span>
+            {/* Stats row */}
+            <div style={{
+              display: 'flex', gap: 16,
+              paddingTop: 12, borderTop: '1px solid var(--border-subtle)',
+              marginTop: project.description ? 0 : 12,
+            }}>
+              {[
+                { icon: '🧪', label: 'Tests',   count: project._count?.testCases ?? 0 },
+                { icon: '🐛', label: 'Bugs',    count: project._count?.bugs ?? 0 },
+                { icon: '▷',  label: 'Runs',    count: project._count?.testRuns ?? 0 },
+                { icon: '👥', label: 'Members', count: project._count?.members ?? 0 },
+              ].map(({ icon, label, count }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: '0.75rem' }}>{icon}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{count}</span> {label}
+                  </span>
+                </div>
+              ))}
             </div>
-          </Link>
+          </div>
         ))}
       </div>
 

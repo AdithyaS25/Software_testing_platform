@@ -60,17 +60,13 @@ const handleClone = async (id: string) => {
   }
 };
 
-const handleDelete = async () => {
-  if (!projectId || !deleteId) return;
+const handleDelete = async (id: string) => {
   try {
-    await apiClient.delete(
-      `/api/projects/${projectId}/test-cases/${deleteId}`
-    );
+    await apiClient.delete(`/api/projects/${projectId}/test-cases/${id}`);
     toast.success("Test case deleted");
-    setDeleteId(null);
-    load();
+    load(); // ← ADD THIS LINE (or fetchTestCases() / whatever your load function is named)
   } catch {
-    toast.error("Failed to delete test case");
+    toast.error("Failed to delete");
   }
 };
 
@@ -160,7 +156,7 @@ const handleDelete = async () => {
         </div>
       )}
 
-      <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete} title="Delete Test Case" message="Are you sure you want to delete this test case? This action can be undone by an admin." confirmLabel="Delete" />
+      <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => {if (deleteId) handleDelete(deleteId);}} title="Delete Test Case" message="Are you sure you want to delete this test case? This action can be undone by an admin." confirmLabel="Delete" />
     </div>
   );
 };
