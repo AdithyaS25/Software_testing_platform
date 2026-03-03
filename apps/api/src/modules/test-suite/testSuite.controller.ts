@@ -1,19 +1,30 @@
 import { Response, RequestHandler } from "express";
 import { prisma } from "../../prisma";
-import { executeSuite, 
-  completeSuiteExecution, 
-  getSuiteExecutionReport } from "./testSuite.service";
+import {
+  executeSuite,
+  completeSuiteExecution,
+  getSuiteExecutionReport
+} from "./testSuite.service";
 import { AuthenticatedRequest } from "../../types/auth-request";
 
-/* ======================================================
+/* ============================
    CREATE TEST SUITE
-====================================================== */
+============================ */
 
 export const createTestSuiteController: RequestHandler = async (
   req,
   res: Response
 ) => {
   const authReq = req as AuthenticatedRequest;
+
+  const projectIdParam = req.params.projectId;
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  if (!projectId) {
+    return res.status(400).json({ message: "Project ID is required" });
+  }
 
   const { name, description, module, parentId } = req.body;
 
@@ -26,13 +37,13 @@ export const createTestSuiteController: RequestHandler = async (
   }
 
   if (parentId) {
-    const parentSuite = await prisma.testSuite.findUnique({
-      where: { id: String(parentId) },
+    const parentSuite = await prisma.testSuite.findFirst({
+      where: { id: String(parentId), projectId },
     });
 
     if (!parentSuite) {
       return res.status(400).json({
-        message: "Parent suite not found",
+        message: "Parent suite not found in this project",
       });
     }
   }
@@ -40,9 +51,10 @@ export const createTestSuiteController: RequestHandler = async (
   const suite = await prisma.testSuite.create({
     data: {
       name,
-      description,
-      module,
+      description: description ?? null,
+      module: module ?? null,
       createdById: authReq.user.id,
+      projectId,
       parentId: parentId ? String(parentId) : null,
     },
   });
@@ -50,111 +62,53 @@ export const createTestSuiteController: RequestHandler = async (
   return res.status(201).json(suite);
 };
 
-/* ======================================================
-   GET SUITES
-====================================================== */
+/* ============================
+   GET SUITES (Project Scoped)
+============================ */
 
 export const getTestSuitesController: RequestHandler = async (
-  _req,
+  req,
   res: Response
 ) => {
+  const projectIdParam = req.params.projectId;
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  if (!projectId) {
+    return res.status(400).json({ message: "Project ID is required" });
+  }
+
   const suites = await prisma.testSuite.findMany({
-  where: {
-    parentId: null,
-    isArchived: false,
-  },
-  include: {
-    testCases: {
-      include: {
-        testCase: true,
-      },
-      orderBy: {
-        position: "asc",
-      },
+    where: {
+      projectId,
+      parentId: null,
+      isArchived: false,
     },
-    children: {
-      include: {
-        testCases: {
-          include: {
-            testCase: true,
-          },
-          orderBy: {
-            position: "asc",
+    include: {
+      testCases: {
+        include: { testCase: true },
+        orderBy: { position: "asc" },
+      },
+      children: {
+        where: { projectId },
+        include: {
+          testCases: {
+            include: { testCase: true },
+            orderBy: { position: "asc" },
           },
         },
       },
     },
-  },
-  orderBy: { createdAt: "desc" },
-});
+    orderBy: { createdAt: "desc" },
+  });
 
   return res.status(200).json(suites);
 };
 
-/* ======================================================
-   ADD TEST CASE
-====================================================== */
-
-export const addTestCaseToSuiteController: RequestHandler = async (
-  req,
-  res
-) => {
-  const suiteId = String(req.params.id);
-  const { testCaseId } = req.body;
-
-  if (!suiteId || !testCaseId) {
-    return res.status(400).json({
-      message: "Suite ID and Test Case ID required",
-    });
-  }
-
-  const maxPosition = await prisma.testSuiteTestCase.aggregate({
-    where: { suiteId },
-    _max: { position: true },
-  });
-
-  const newPosition = (maxPosition._max.position ?? 0) + 1;
-
-  const relation = await prisma.testSuiteTestCase.create({
-    data: {
-      suiteId,
-      testCaseId,
-      position: newPosition,
-    },
-  });
-
-  return res.status(200).json(relation);
-};
-
-
-/* ======================================================
-   REMOVE TEST CASE
-====================================================== */
-
-export const removeTestCaseFromSuiteController: RequestHandler = async (
-  req,
-  res
-) => {
-  const suiteId = String(req.params.id);
-  const { testCaseId } = req.body;
-
-  await prisma.testSuiteTestCase.delete({
-    where: {
-      suiteId_testCaseId: {
-        suiteId,
-        testCaseId,
-      },
-    },
-  });
-
-  return res.status(200).json({
-    message: "Test case removed from suite",
-  });
-};
-
-/* ======================================================
-   EXECUTE SUITE
-====================================================== */
+/* ============================
+   EXECUTE SUITE (Project Safe)
+============================ */
 
 export const executeSuiteController: RequestHandler = async (
   req,
@@ -162,14 +116,25 @@ export const executeSuiteController: RequestHandler = async (
 ) => {
   const authReq = req as AuthenticatedRequest;
 
-  const suiteId = String(req.params.suiteId);
-  const { executionMode } = req.body;
+  const projectIdParam = req.params.projectId;
+  const suiteIdParam = req.params.suiteId;
 
-  if (!authReq.user) {
-    return res.status(401).json({ message: "Unauthorized" });
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  const suiteId = Array.isArray(suiteIdParam)
+    ? suiteIdParam[0]
+    : suiteIdParam;
+
+  if (!projectId || !suiteId || !authReq.user) {
+    return res.status(400).json({ message: "Invalid request" });
   }
 
+  const { executionMode } = req.body;
+
   const result = await executeSuite(
+    projectId,
     suiteId,
     authReq.user.id,
     executionMode
@@ -181,37 +146,58 @@ export const executeSuiteController: RequestHandler = async (
   });
 };
 
+export const completeSuiteExecutionController: RequestHandler =
+  async (req, res) => {
+    const idParam = req.params.suiteExecutionId;
+    const suiteExecutionId = Array.isArray(idParam)
+      ? idParam[0]
+      : idParam;
 
-export const completeSuiteExecutionController: RequestHandler = async (
-  req,
-  res
-) => {
-  const suiteExecutionId = String(req.params.suiteExecutionId);
+    if (!suiteExecutionId) {
+      return res.status(400).json({ message: "Invalid execution ID" });
+    }
 
-  const result = await completeSuiteExecution(suiteExecutionId);
+    const result = await completeSuiteExecution(suiteExecutionId);
 
-  return res.status(200).json({
-    message: "Suite execution completed",
-    data: result,
-  });
-};
+    return res.status(200).json({
+      message: "Suite execution completed",
+      data: result,
+    });
+  };
 
 export const getSuiteExecutionReportController: RequestHandler =
   async (req, res) => {
-    const suiteExecutionId = String(req.params.suiteExecutionId);
+    const idParam = req.params.suiteExecutionId;
+    const suiteExecutionId = Array.isArray(idParam)
+      ? idParam[0]
+      : idParam;
 
-    const report = await getSuiteExecutionReport(
-      suiteExecutionId
-    );
+    if (!suiteExecutionId) {
+      return res.status(400).json({ message: "Invalid execution ID" });
+    }
+
+    const report = await getSuiteExecutionReport(suiteExecutionId);
 
     return res.status(200).json(report);
   };
 
-  export const reorderSuiteTestCasesController: RequestHandler = async (
+ export const reorderSuiteTestCasesController: RequestHandler = async (
   req,
   res
 ) => {
-  const suiteId = String(req.params.id);
+  const projectIdParam = req.params.projectId;
+  const idParam = req.params.id;
+
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  const suiteId = Array.isArray(idParam) ? idParam[0] : idParam;
+
+  if (!projectId || !suiteId) {
+    return res.status(400).json({ message: "Invalid parameters" });
+  }
+
   const { orderedTestCaseIds } = req.body;
 
   if (!Array.isArray(orderedTestCaseIds) || orderedTestCaseIds.length === 0) {
@@ -222,16 +208,14 @@ export const getSuiteExecutionReportController: RequestHandler =
 
   try {
     await prisma.$transaction(async (tx) => {
-      // 1️⃣ Validate suite exists
-      const suite = await tx.testSuite.findUnique({
-        where: { id: suiteId },
+      const suite = await tx.testSuite.findFirst({
+        where: { id: suiteId, projectId },
       });
 
       if (!suite) {
-        throw new Error("Suite not found");
+        throw new Error("Suite not found in this project");
       }
 
-      // 2️⃣ Validate test cases belong to suite
       const existingRelations = await tx.testSuiteTestCase.findMany({
         where: { suiteId },
       });
@@ -240,13 +224,10 @@ export const getSuiteExecutionReportController: RequestHandler =
 
       for (const id of orderedTestCaseIds) {
         if (!existingIds.includes(id)) {
-          throw new Error(
-            `Test case ${id} does not belong to this suite`
-          );
+          throw new Error(`Test case ${id} does not belong to this suite`);
         }
       }
 
-      // 3️⃣ Update positions sequentially (safe)
       for (let i = 0; i < orderedTestCaseIds.length; i++) {
         await tx.testSuiteTestCase.update({
           where: {
@@ -255,9 +236,7 @@ export const getSuiteExecutionReportController: RequestHandler =
               testCaseId: orderedTestCaseIds[i],
             },
           },
-          data: {
-            position: i + 1,
-          },
+          data: { position: i + 1 },
         });
       }
     });
@@ -266,29 +245,33 @@ export const getSuiteExecutionReportController: RequestHandler =
       message: "Suite reordered successfully",
     });
   } catch (error: unknown) {
-    if (error instanceof Error) {
-      return res.status(400).json({
-        message: error.message,
-      });
-    }
-
-    return res.status(500).json({
-      message: "Internal server error",
+    return res.status(400).json({
+      message: error instanceof Error ? error.message : "Internal server error",
     });
   }
 };
+
 
 export const cloneSuiteController: RequestHandler = async (
   req,
   res
 ) => {
-  const suiteId = String(req.params.id);
+  const projectIdParam = req.params.projectId;
+  const idParam = req.params.id;
 
-  const original = await prisma.testSuite.findUnique({
-    where: { id: suiteId },
-    include: {
-      testCases: true,
-    },
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  const suiteId = Array.isArray(idParam) ? idParam[0] : idParam;
+
+  if (!projectId || !suiteId) {
+    return res.status(400).json({ message: "Invalid parameters" });
+  }
+
+  const original = await prisma.testSuite.findFirst({
+    where: { id: suiteId, projectId },
+    include: { testCases: true },
   });
 
   if (!original) {
@@ -302,6 +285,7 @@ export const cloneSuiteController: RequestHandler = async (
         description: original.description,
         module: original.module,
         createdById: original.createdById,
+        projectId,
       },
     });
 
@@ -330,10 +314,21 @@ export const archiveSuiteController: RequestHandler = async (
   req,
   res
 ) => {
-  const suiteId = String(req.params.id);
+  const projectIdParam = req.params.projectId;
+  const idParam = req.params.id;
 
-  const suite = await prisma.testSuite.update({
-    where: { id: suiteId },
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  const suiteId = Array.isArray(idParam) ? idParam[0] : idParam;
+
+  if (!projectId || !suiteId) {
+    return res.status(400).json({ message: "Invalid parameters" });
+  }
+
+  const suite = await prisma.testSuite.updateMany({
+    where: { id: suiteId, projectId },
     data: {
       isArchived: true,
       archivedAt: new Date(),
@@ -347,10 +342,21 @@ export const restoreSuiteController: RequestHandler = async (
   req,
   res
 ) => {
-  const suiteId = String(req.params.id);
+  const projectIdParam = req.params.projectId;
+  const idParam = req.params.id;
 
-  const suite = await prisma.testSuite.update({
-    where: { id: suiteId },
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  const suiteId = Array.isArray(idParam) ? idParam[0] : idParam;
+
+  if (!projectId || !suiteId) {
+    return res.status(400).json({ message: "Invalid parameters" });
+  }
+
+  const suite = await prisma.testSuite.updateMany({
+    where: { id: suiteId, projectId },
     data: {
       isArchived: false,
       archivedAt: null,
@@ -358,4 +364,90 @@ export const restoreSuiteController: RequestHandler = async (
   });
 
   return res.status(200).json(suite);
+};
+
+export const addTestCaseToSuiteController: RequestHandler = async (
+  req,
+  res
+) => {
+  const projectIdParam = req.params.projectId;
+  const suiteIdParam = req.params.id;
+
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  const suiteId = Array.isArray(suiteIdParam)
+    ? suiteIdParam[0]
+    : suiteIdParam;
+
+  const { testCaseId } = req.body;
+
+  if (!projectId || !suiteId || !testCaseId) {
+    return res.status(400).json({
+      message: "Project ID, Suite ID and Test Case ID required",
+    });
+  }
+
+  const suite = await prisma.testSuite.findFirst({
+    where: { id: suiteId, projectId },
+  });
+
+  if (!suite) {
+    return res.status(404).json({ message: "Suite not found" });
+  }
+
+  const maxPosition = await prisma.testSuiteTestCase.aggregate({
+    where: { suiteId },
+    _max: { position: true },
+  });
+
+  const newPosition = (maxPosition._max.position ?? 0) + 1;
+
+  const relation = await prisma.testSuiteTestCase.create({
+    data: {
+      suiteId,
+      testCaseId,
+      position: newPosition,
+    },
+  });
+
+  return res.status(200).json(relation);
+};
+
+export const removeTestCaseFromSuiteController: RequestHandler = async (
+  req,
+  res
+) => {
+  const projectIdParam = req.params.projectId;
+  const suiteIdParam = req.params.id;
+
+  const projectId = Array.isArray(projectIdParam)
+    ? projectIdParam[0]
+    : projectIdParam;
+
+  const suiteId = Array.isArray(suiteIdParam)
+    ? suiteIdParam[0]
+    : suiteIdParam;
+
+  const { testCaseId } = req.body;
+
+  if (!projectId || !suiteId || !testCaseId) {
+    return res.status(400).json({
+      message: "Invalid parameters",
+    });
+  }
+
+  await prisma.testSuiteTestCase.delete({
+    where: {
+      suiteId_testCaseId: {
+        suiteId,
+        testCaseId,
+      },
+    },
+  });
+
+  return res.status(200).json({
+    message: "Test case removed from suite",
+  });
 };

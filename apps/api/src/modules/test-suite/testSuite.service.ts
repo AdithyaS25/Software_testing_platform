@@ -6,25 +6,19 @@ import {
 } from "@prisma/client";
 
 export const executeSuite = async (
+  projectId: string,
   suiteId: string,
   userId: string,
   executionMode: SuiteExecutionMode
 ) => {
   return prisma.$transaction(async (tx) => {
-    const suite = await tx.testSuite.findUnique({
-      where: { id: suiteId },
+    const suite = await tx.testSuite.findFirst({
+      where: { id: suiteId, projectId },
       include: { testCases: true },
     });
 
-    if (!suite) {
-      throw new Error("Suite not found");
-    }
+    if (!suite) throw new Error("Suite not found in project");
 
-    if (suite.testCases.length === 0) {
-      throw new Error("Cannot execute empty suite");
-    }
-
-    // 🔥 CREATE SUITE EXECUTION (Correct model)
     const suiteExecution = await tx.testSuiteExecution.create({
       data: {
         suiteId,
@@ -35,10 +29,9 @@ export const executeSuite = async (
       },
     });
 
-    // 🔥 CREATE INDIVIDUAL EXECUTIONS
     await tx.execution.createMany({
-      data: suite.testCases.map((testCase) => ({
-        testCaseId: testCase.id,
+      data: suite.testCases.map((tc) => ({
+        testCaseId: tc.id,
         executedById: userId,
         suiteExecutionId: suiteExecution.id,
         status: ExecutionStatus.IN_PROGRESS,

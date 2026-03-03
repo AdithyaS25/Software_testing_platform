@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../../../lib/axios";
 import { useAuth } from "../../../app/providers/AuthProvider";
 import { Button, Badge, PriorityBadge, StatusBadge, SearchInput, Select, EmptyState, ConfirmDialog, useToast, Spinner } from "../../../shared/components/ui";
+import { useParams } from "react-router-dom";
 
 export const TestCasesPage = () => {
+  const { projectId } = useParams<{ projectId: string }>();
   const { user } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
@@ -18,35 +20,55 @@ export const TestCasesPage = () => {
   const canEdit = user?.role === "TESTER" || user?.role === "ADMIN";
 
   const load = () => {
-    setLoading(true);
-    apiClient.get("/test-cases").then(r => { setCases(r.data.data || r.data || []); setLoading(false); }).catch(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, []);
+  if (!projectId) return;
+  setLoading(true);
+  apiClient
+    .get(`/api/projects/${projectId}/test-cases`)
+    .then((r) => {
+      setCases(r.data.data || r.data || []);
+      setLoading(false);
+    })
+    .catch(() => setLoading(false));
+};
 
-  const filtered = cases.filter(tc => {
-    const matchSearch = !search || tc.title?.toLowerCase().includes(search.toLowerCase()) || tc.testCaseId?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = !statusFilter || tc.status === statusFilter;
-    const matchPriority = !priorityFilter || tc.priority === priorityFilter;
-    return matchSearch && matchStatus && matchPriority;
-  });
+useEffect(() => {
+  load();
+}, [projectId]);
 
-  const handleClone = async (id: string) => {
-    try {
-      await apiClient.post(`/test-cases/${id}/clone`);
-      toast.success("Test case cloned successfully");
-      load();
-    } catch { toast.error("Failed to clone test case"); }
-  };
+const filtered = cases.filter((tc: any) => {
+  const matchSearch =
+    !search ||
+    tc.title?.toLowerCase().includes(search.toLowerCase()) ||
+    tc.testCaseId?.toLowerCase().includes(search.toLowerCase());
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    try {
-      await apiClient.delete(`/test-cases/${deleteId}`);
-      toast.success("Test case deleted");
-      setDeleteId(null);
-      load();
-    } catch { toast.error("Failed to delete test case"); }
-  };
+  const matchStatus = !statusFilter || tc.status === statusFilter;
+  const matchPriority = !priorityFilter || tc.priority === priorityFilter;
+
+  return matchSearch && matchStatus && matchPriority;
+});
+
+const handleClone = async (id: string) => {
+  if (!projectId) return;
+  try {
+    await apiClient.post(
+      `/api/projects/${projectId}/test-cases/${id}/clone`
+    );
+    toast.success("Test case cloned successfully");
+    load();
+  } catch {
+    toast.error("Failed to clone test case");
+  }
+};
+
+const handleDelete = async (id: string) => {
+  try {
+    await apiClient.delete(`/api/projects/${projectId}/test-cases/${id}`);
+    toast.success("Test case deleted");
+    load(); // ← ADD THIS LINE (or fetchTestCases() / whatever your load function is named)
+  } catch {
+    toast.error("Failed to delete");
+  }
+};
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease" }}>
@@ -56,7 +78,7 @@ export const TestCasesPage = () => {
           <p className="page-subtitle">{cases.length} total test cases</p>
         </div>
         {canEdit && (
-          <Button icon="+" onClick={() => nav("/test-cases/new")}>New Test Case</Button>
+          <Button icon="+" onClick={() => nav(`/projects/${projectId}/test-cases/new`)}>New Test Case</Button>
         )}
       </div>
 
@@ -80,7 +102,7 @@ export const TestCasesPage = () => {
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 60 }}><Spinner size={28} /></div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="✎" title="No test cases found" desc={search ? "Try adjusting your filters" : "Create your first test case to get started"} action={canEdit ? <Button onClick={() => nav("/test-cases/new")}>Create Test Case</Button> : undefined} />
+        <EmptyState icon="✎" title="No test cases found" desc={search ? "Try adjusting your filters" : "Create your first test case to get started"} action={canEdit ? <Button onClick={() => nav(`/projects/${projectId}/test-cases/new`)}>Create Test Case</Button> : undefined} />
       ) : (
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <table className="tt-table">
@@ -95,7 +117,7 @@ export const TestCasesPage = () => {
                 <tr key={tc.id}>
                   <td><span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--text-muted)" }}>{tc.testCaseId || tc.id?.slice(0, 8)}</span></td>
                   <td>
-                    <Link to={`/test-cases/${tc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: 500 }}
+                    <Link to={`/projects/${projectId}/test-cases/${tc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: 500 }}
                       onMouseEnter={e => (e.currentTarget).style.color = "var(--accent)"}
                       onMouseLeave={e => (e.currentTarget).style.color = "var(--text-primary)"}
                     >
@@ -115,11 +137,11 @@ export const TestCasesPage = () => {
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                      <Button variant="ghost" size="sm" onClick={() => nav(`/test-cases/${tc.id}`)}>View</Button>
+                      <Button variant="ghost" size="sm" onClick={() => nav(`/projects/${projectId}/test-cases/${tc.id}`)}>View</Button>
                       {canEdit && (
                         <>
                           {tc.status === "APPROVED" && (
-                            <Button variant="secondary" size="sm" onClick={() => nav(`/execution/${tc.id}`)}>▷ Run</Button>
+                            <Button variant="secondary" size="sm" onClick={() => nav(`/projects/${projectId}/executions/${tc.id}`)}>▷ Run</Button>
                           )}
                           <Button variant="ghost" size="sm" onClick={() => handleClone(tc.id)}>Clone</Button>
                           <Button variant="danger" size="sm" onClick={() => setDeleteId(tc.id)}>Delete</Button>
@@ -134,7 +156,7 @@ export const TestCasesPage = () => {
         </div>
       )}
 
-      <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete} title="Delete Test Case" message="Are you sure you want to delete this test case? This action can be undone by an admin." confirmLabel="Delete" />
+      <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => {if (deleteId) handleDelete(deleteId);}} title="Delete Test Case" message="Are you sure you want to delete this test case? This action can be undone by an admin." confirmLabel="Delete" />
     </div>
   );
 };

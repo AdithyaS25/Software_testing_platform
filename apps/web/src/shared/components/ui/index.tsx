@@ -11,37 +11,72 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: React.ReactNode;
 }
 
-export const Button = ({ variant = "primary", size = "md", loading, icon, children, className = "", disabled, ...props }: ButtonProps) => {
-  const base = "inline-flex items-center gap-2 font-medium rounded-lg transition-all duration-150 border select-none";
-
-  const variants: Record<BtnVariant, string> = {
-    primary:   "bg-accent border-accent text-white hover:bg-accent-hover shadow-sm",
-    secondary: "bg-bg-elevated border-border text-text-primary hover:bg-bg-hover",
-    ghost:     "bg-transparent border-transparent text-text-secondary hover:bg-bg-hover hover:text-text-primary",
-    danger:    "bg-danger-muted border-danger/30 text-danger hover:bg-danger hover:text-white",
-    success:   "bg-success-muted border-success/30 text-success hover:bg-success hover:text-white",
-  };
-
-  const sizes: Record<BtnSize, string> = {
-    sm: "px-3 py-1.5 text-xs",
-    md: "px-4 py-2 text-sm",
-    lg: "px-5 py-2.5 text-base",
-  };
+export const Button = ({
+  variant = "primary",
+  size = "md",
+  loading,
+  icon,
+  children,
+  disabled,
+  ...props
+}: ButtonProps) => {
 
   const style: React.CSSProperties = {
     fontFamily: "var(--font-sans)",
-    display: "inline-flex", alignItems: "center", gap: "6px",
-    fontWeight: 500, borderRadius: "var(--radius-md)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    fontWeight: 500,
+    borderRadius: "var(--radius-md)",
     border: "1px solid",
     cursor: disabled || loading ? "not-allowed" : "pointer",
     opacity: disabled || loading ? 0.6 : 1,
     transition: "all var(--transition)",
     whiteSpace: "nowrap",
-    ...(variant === "primary" && { background: "var(--accent)", borderColor: "var(--accent)", color: "#fff", padding: size === "sm" ? "6px 12px" : size === "lg" ? "10px 20px" : "8px 16px", fontSize: size === "sm" ? "0.75rem" : size === "lg" ? "0.95rem" : "0.875rem" }),
-    ...(variant === "secondary" && { background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text-primary)", padding: size === "sm" ? "6px 12px" : size === "lg" ? "10px 20px" : "8px 16px", fontSize: size === "sm" ? "0.75rem" : size === "lg" ? "0.95rem" : "0.875rem" }),
-    ...(variant === "ghost" && { background: "transparent", borderColor: "transparent", color: "var(--text-secondary)", padding: size === "sm" ? "6px 12px" : size === "lg" ? "10px 20px" : "8px 16px", fontSize: size === "sm" ? "0.75rem" : size === "lg" ? "0.95rem" : "0.875rem" }),
-    ...(variant === "danger" && { background: "var(--danger-muted)", borderColor: "rgba(255,77,106,0.3)", color: "var(--danger)", padding: size === "sm" ? "6px 12px" : size === "lg" ? "10px 20px" : "8px 16px", fontSize: size === "sm" ? "0.75rem" : size === "lg" ? "0.95rem" : "0.875rem" }),
-    ...(variant === "success" && { background: "var(--success-muted)", borderColor: "rgba(34,201,142,0.3)", color: "var(--success)", padding: size === "sm" ? "6px 12px" : size === "lg" ? "10px 20px" : "8px 16px", fontSize: size === "sm" ? "0.75rem" : size === "lg" ? "0.95rem" : "0.875rem" }),
+
+    ...(variant === "primary" && {
+      background: "var(--accent)",
+      borderColor: "var(--accent)",
+      color: "#fff",
+    }),
+
+    ...(variant === "secondary" && {
+      background: "var(--bg-elevated)",
+      borderColor: "var(--border)",
+      color: "var(--text-primary)",
+    }),
+
+    ...(variant === "ghost" && {
+      background: "transparent",
+      borderColor: "transparent",
+      color: "var(--text-secondary)",
+    }),
+
+    ...(variant === "danger" && {
+      background: "var(--danger-muted)",
+      borderColor: "rgba(255,77,106,0.3)",
+      color: "var(--danger)",
+    }),
+
+    ...(variant === "success" && {
+      background: "var(--success-muted)",
+      borderColor: "rgba(34,201,142,0.3)",
+      color: "var(--success)",
+    }),
+
+    padding:
+      size === "sm"
+        ? "6px 12px"
+        : size === "lg"
+        ? "10px 20px"
+        : "8px 16px",
+
+    fontSize:
+      size === "sm"
+        ? "0.75rem"
+        : size === "lg"
+        ? "0.95rem"
+        : "0.875rem",
   };
 
   return (

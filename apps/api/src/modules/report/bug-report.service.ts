@@ -1,182 +1,112 @@
+// File: apps/api/src/modules/report/bug.report.service.ts
+
 import { prisma } from "../../prisma";
-import { BugReport } from "./bug-report.types";
 
-export const generateBugReport = async (): Promise<BugReport> => {
-  // =============================
-  // SUMMARY
-  // =============================
+export async function generateBugReport(projectId: string) {
+  // ── Total ──────────────────────────────────────────────
+  const total = await prisma.bug.count({ where: { projectId } });
 
-  const total = await prisma.bug.count();
-
+  // ── By Status ──────────────────────────────────────────
   const byStatusRaw = await prisma.bug.groupBy({
     by: ["status"],
+    where: { projectId },
     _count: { status: true },
   });
+  const byStatus = byStatusRaw.map(r => ({ status: r.status, count: r._count.status }));
 
+  // ── By Severity ────────────────────────────────────────
   const bySeverityRaw = await prisma.bug.groupBy({
     by: ["severity"],
+    where: { projectId },
     _count: { severity: true },
   });
+  const bySeverity = bySeverityRaw.map(r => ({ severity: r.severity, count: r._count.severity }));
 
+  // ── By Priority ────────────────────────────────────────
   const byPriorityRaw = await prisma.bug.groupBy({
     by: ["priority"],
+    where: { projectId },
     _count: { priority: true },
   });
+  const byPriority = byPriorityRaw.map(r => ({ priority: r.priority, count: r._count.priority }));
 
-  // =============================
-  // AGING (Open Bugs Only)
-  // =============================
-
+  // ── Aging (open bugs) ──────────────────────────────────
   const openBugs = await prisma.bug.findMany({
-    where: {
-      resolvedAt: null,
-    },
+    where: { projectId, resolvedAt: null },
     select: { createdAt: true },
   });
 
-  const now = new Date();
+  const now = Date.now();
+  const ageDays = openBugs.map(b => (now - b.createdAt.getTime()) / 86400000);
+  const averageDaysOpen   = ageDays.length ? ageDays.reduce((a, b) => a + b, 0) / ageDays.length : 0;
+  const oldestOpenBugDays = ageDays.length ? Math.max(...ageDays) : 0;
 
-  const agingDays = openBugs.map((bug) => {
-    const diff =
-      now.getTime() - bug.createdAt.getTime();
-    return diff / (1000 * 60 * 60 * 24);
+  // ── Resolution metrics (resolved bugs) ────────────────
+  const resolvedBugs = await prisma.bug.findMany({
+    where: { projectId, resolvedAt: { not: null } },
+    select: { createdAt: true, resolvedAt: true },
   });
 
-  const averageDaysOpen =
-    agingDays.length > 0
-      ? Number(
-          (
-            agingDays.reduce((a, b) => a + b, 0) /
-            agingDays.length
-          ).toFixed(1)
-        )
-      : 0;
+  const resolutionDays = resolvedBugs.map(b =>
+    (b.resolvedAt!.getTime() - b.createdAt.getTime()) / 86400000
+  );
+  const averageResolutionDays = resolutionDays.length
+    ? resolutionDays.reduce((a, b) => a + b, 0) / resolutionDays.length : 0;
+  const fastestResolutionDays = resolutionDays.length ? Math.min(...resolutionDays) : 0;
 
-  const oldestOpenBugDays =
-    agingDays.length > 0
-      ? Number(Math.max(...agingDays).toFixed(1))
-      : 0;
-
-  // =============================
-  // BUGS BY DEVELOPER
-  // =============================
-
-  const byDeveloperRaw = await prisma.bug.groupBy({
+  // ── By Developer ───────────────────────────────────────
+  const byDevRaw = await prisma.bug.groupBy({
     by: ["assignedToId"],
+    where: { projectId, assignedToId: { not: null } },
     _count: { id: true },
   });
 
   const byDeveloper = await Promise.all(
-    byDeveloperRaw
-      .filter((item) => item.assignedToId)
-      .map(async (item) => {
-        const user = await prisma.user.findUnique({
-          where: { id: item.assignedToId! },
-        });
+    byDevRaw.map(async row => {
+      const dev = await prisma.user.findUnique({
+        where: { id: row.assignedToId! },
+        select: { id: true, email: true },
+      });
 
-        return {
-          developerId: item.assignedToId!,
-          developerEmail: user?.email ?? "Unknown",
-          totalAssigned: item._count.id,
-        };
-      })
+      const fixedCount = await prisma.bug.count({
+        where: { projectId, assignedToId: row.assignedToId, status: "FIXED" },
+      });
+
+      const devResolved = await prisma.bug.findMany({
+        where: { projectId, assignedToId: row.assignedToId, resolvedAt: { not: null } },
+        select: { createdAt: true, resolvedAt: true },
+      });
+      const devDays = devResolved.map(b =>
+        (b.resolvedAt!.getTime() - b.createdAt.getTime()) / 86400000
+      );
+      const avgResolutionDays = devDays.length
+        ? devDays.reduce((a, b) => a + b, 0) / devDays.length : 0;
+
+      return {
+        developerId:      row.assignedToId,
+        developerName:    dev?.email?.split("@")[0] ?? "Unknown",
+        totalAssigned:    row._count.id,
+        totalFixed:       fixedCount,
+        avgResolutionDays: Number(avgResolutionDays.toFixed(1)),
+      };
+    })
   );
-
-  // =============================
-// TRENDS (Created Per Day)
-// =============================
-
-const bugs = await prisma.bug.findMany({
-  select: { createdAt: true },
-});
-
-const trendMap: Record<string, number> = {};
-
-bugs.forEach((bug) => {
-  const iso = bug.createdAt.toISOString();
-  const date = iso.split("T")[0];
-
-  if (!date) return; // strict safety
-
-  trendMap[date] = (trendMap[date] ?? 0) + 1;
-});
-
-const trends = Object.entries(trendMap).map(
-  ([date, totalCreated]) => ({
-    date,
-    totalCreated,
-  })
-);
-
-  // =============================
-  // RESOLUTION METRICS
-  // =============================
-
-  const resolvedBugs = await prisma.bug.findMany({
-    where: {
-      resolvedAt: { not: null },
-    },
-    select: {
-      createdAt: true,
-      resolvedAt: true,
-    },
-  });
-
-  const resolutionDays = resolvedBugs.map(
-    (bug) => {
-      const diff =
-        bug.resolvedAt!.getTime() -
-        bug.createdAt.getTime();
-      return diff / (1000 * 60 * 60 * 24);
-    }
-  );
-
-  const averageResolutionDays =
-    resolutionDays.length > 0
-      ? Number(
-          (
-            resolutionDays.reduce((a, b) => a + b, 0) /
-            resolutionDays.length
-          ).toFixed(1)
-        )
-      : 0;
-
-  const fastestResolutionDays =
-    resolutionDays.length > 0
-      ? Number(Math.min(...resolutionDays).toFixed(1))
-      : 0;
-
-  const slowestResolutionDays =
-    resolutionDays.length > 0
-      ? Number(Math.max(...resolutionDays).toFixed(1))
-      : 0;
 
   return {
     summary: {
       total,
-      byStatus: byStatusRaw.map((item) => ({
-        status: item.status,
-        count: item._count.status,
-      })),
-      bySeverity: bySeverityRaw.map((item) => ({
-        severity: item.severity,
-        count: item._count.severity,
-      })),
-      byPriority: byPriorityRaw.map((item) => ({
-        priority: item.priority,
-        count: item._count.priority,
-      })),
+      byStatus,
+      bySeverity,
+      byPriority,
     },
     aging: {
-      averageDaysOpen,
-      oldestOpenBugDays,
+      averageDaysOpen:   Number(averageDaysOpen.toFixed(1)),
+      oldestOpenBugDays: Number(oldestOpenBugDays.toFixed(1)),
+    },
+    resolutionMetrics: {
+      averageResolutionDays: Number(averageResolutionDays.toFixed(1)),
+      fastestResolutionDays: Number(fastestResolutionDays.toFixed(1)),
     },
     byDeveloper,
-    trends,
-    resolutionMetrics: {
-      averageResolutionDays,
-      fastestResolutionDays,
-      slowestResolutionDays,
-    },
   };
-};
+}

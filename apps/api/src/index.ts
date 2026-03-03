@@ -3,23 +3,11 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-
 import authRoutes from "./modules/auth/auth.routes";
-import testCaseRoutes from "./modules/test-cases/testCase.routes";
-import executionRoutes from "./modules/execution/execution.routes";
-
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
-import testRunRoutes from "./modules/test-run/testRun.routes";
 import path from "path";
-import bugRoutes from "./modules/bug/bug.routes";
-import testSuiteRoutes from "./modules/test-suite/testSuite.routes";
-import reportRoutes from "./modules/report/report.routes";
-import bugReportRoutes from "./modules/report/bug-report.routes";
-import developerPerformanceRoutes from "./modules/report/developer-performance.routes";
-import testerPerformanceRoutes from "./modules/report/tester-performance.routes";
-import exportRoutes from "./modules/report/export.routes";
-import dashboardRoutes from "./modules/report/dashboard.routes";
+import projectRoutes from './modules/project/project.routes';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -40,18 +28,8 @@ app.use(cookieParser());
    ROUTES
    ======================= */
 app.use("/auth", authRoutes);
-app.use("/test-cases", testCaseRoutes);
-app.use("/executions", executionRoutes);
-app.use("/test-runs", testRunRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-app.use("/bugs", bugRoutes);
-app.use("/test-suites", testSuiteRoutes);
-app.use("/reports", reportRoutes);
-app.use("/reports", bugReportRoutes);
-app.use("/reports", developerPerformanceRoutes);
-app.use("/reports", testerPerformanceRoutes);
-app.use("/reports", exportRoutes);
-app.use("/reports", dashboardRoutes);
+app.use("/api/projects", projectRoutes);
 
 /* =======================
    HEALTH CHECK

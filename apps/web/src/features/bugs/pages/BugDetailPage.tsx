@@ -24,7 +24,6 @@ export const BugDetailPage = () => {
   const [newComment, setNewComment] = useState("");
   const [tab, setTab] = useState("details");
   const [assignModal, setAssignModal] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
   const [assignId, setAssignId] = useState("");
   const [fixModal, setFixModal] = useState(false);
   const [fixNotes, setFixNotes] = useState("");

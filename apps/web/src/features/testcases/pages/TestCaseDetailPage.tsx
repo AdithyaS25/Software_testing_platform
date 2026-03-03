@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiClient } from "../../../lib/axios";
 import { useAuth } from "../../../app/providers/AuthProvider";
-import { Button, PriorityBadge, SeverityBadge, StatusBadge, Badge, Spinner, FormField, useToast, Tabs, Modal } from "../../../shared/components/ui";
+import { Button, PriorityBadge, StatusBadge, Badge, Spinner, FormField, useToast, Tabs, Modal } from "../../../shared/components/ui";
 
 export const TestCaseDetailPage = () => {
   const { id } = useParams<{ id: string }>();

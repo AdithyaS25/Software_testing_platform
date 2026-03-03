@@ -28,6 +28,8 @@ model User {
   bugComments         BugComment[]
   testSuites          TestSuite[]
   suiteExecutions     TestSuiteExecution[]
+  ownedProjects       Project[]       @relation("ProjectOwner")
+  projectMembers      ProjectMember[]
 }
 
 model RefreshToken {
@@ -88,6 +90,8 @@ model TestCase {
   steps                   TestStep[]
   bugs                    Bug[]
   suiteRelations          TestSuiteTestCase[]
+  projectId               String
+  project                 Project @relation(fields: [projectId], references: [id])
 }
 
 model TestStep {
@@ -114,6 +118,9 @@ model TestRun {
   createdBy   User              @relation(fields: [createdById], references: [id])
   testCases   TestRunTestCase[]
   executions  Execution[]
+  projectId   String
+  project     Project          @relation(fields: [projectId], references: [id])
+  milestoneTestRuns   MilestoneTestRun[]
 }
 
 model TestRunTestCase {
@@ -198,6 +205,8 @@ model Bug {
   resolvedById String?
   resolvedBy   User?        @relation("ResolvedBugs", fields: [resolvedById], references: [id])
   comments     BugComment[]
+  projectId    String
+  project      Project @relation(fields: [projectId], references: [id])
 }
 
 model BugComment {
@@ -236,6 +245,8 @@ model TestSuite {
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   suiteExecutions TestSuiteExecution[]
+  projectId       String
+  project         Project @relation(fields: [projectId], references: [id])
 }
 
 model TestSuiteTestCase {
@@ -275,6 +286,110 @@ model TestSuiteExecution {
   executions Execution[]
 
   createdAt DateTime @default(now())
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  key         String   @unique // e.g., "TTP", "MOB" — short project code
+  status      ProjectStatus @default(ACTIVE)
+  ownerId     String
+  owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id])
+  members     ProjectMember[]
+  testCases   TestCase[]
+  bugs        Bug[]
+  testRuns    TestRun[]
+  testSuites  TestSuite[]
+  milestones  Milestone[]
+  environments ProjectEnvironment[]
+  customFields ProjectCustomField[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String  @id @default(cuid())
+  projectId String
+  userId    String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model ProjectEnvironment {
+  id        String  @id @default(cuid())
+  projectId String
+  name      String  // e.g., "Staging", "Production", "QA"
+  url       String?
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_environments")
+}
+
+model ProjectCustomField {
+  id          String          @id @default(cuid())
+  projectId   String
+  name        String          // e.g., "Device Type", "Browser Type"
+  fieldType   CustomFieldType @default(TEXT)
+  options     String[]        // For DROPDOWN type
+  required    Boolean         @default(false)
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_custom_fields")
+}
+
+model Milestone {
+  id              String          @id @default(cuid())
+  projectId       String
+  name            String          // e.g., "Beta Release"
+  description     String?
+  targetDate      DateTime
+  passRateTarget  Float?          // e.g., 95.0 for 95%
+  status          MilestoneStatus @default(UPCOMING)
+  project         Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testRuns        MilestoneTestRun[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("milestones")
+}
+
+model MilestoneTestRun {
+  milestoneId String
+  testRunId   String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  testRun     TestRun   @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  linkedAt    DateTime  @default(now())
+
+  @@id([milestoneId, testRunId])
+  @@map("milestone_test_runs")
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  COMPLETED
+}
+
+enum MilestoneStatus {
+  UPCOMING
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DROPDOWN
+  DATE
+  BOOLEAN
 }
 
 enum SuiteExecutionMode {

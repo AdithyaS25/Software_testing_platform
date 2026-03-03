@@ -1,57 +1,119 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../../../lib/axios";
 import { Button, FormField, useToast } from "../../../shared/components/ui";
 
-interface Step { stepNumber: number; action: string; expectedResult: string; testData?: string; }
+interface Step {
+  stepNumber: number;
+  action: string;
+  expectedResult: string;
+  testData?: string;
+}
+
+// ── Helpers defined OUTSIDE component so they don't remount on re-render ──
+
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div style={{ marginBottom: 28 }}>
+    <h3 style={{
+      fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)",
+      letterSpacing: "0.1em", textTransform: "uppercase",
+      marginBottom: 14, paddingBottom: 8, borderBottom: "1px solid var(--border-subtle)",
+    }}>{title}</h3>
+    {children}
+  </div>
+);
+
+const Row = ({ children }: { children: React.ReactNode }) => (
+  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>{children}</div>
+);
+
+// ── Main component ──
 
 export const CreateTestCasePage = () => {
   const nav = useNavigate();
   const toast = useToast();
+  const { projectId } = useParams<{ projectId: string }>();
+
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    title: "", description: "", module: "", priority: "MEDIUM", severity: "MAJOR",
-    type: "FUNCTIONAL", status: "DRAFT", automationStatus: "NOT_AUTOMATED",
-    tags: "", preconditions: "", testDataRequirements: "", environmentRequirements: "",
-    postconditions: "", cleanupSteps: "", estimatedDuration: "", automationScriptLink: "",
+    title: "",
+    description: "",
+    module: "",
+    priority: "MEDIUM",
+    severity: "MAJOR",
+    type: "FUNCTIONAL",
+    status: "DRAFT",
+    automationStatus: "NOT_AUTOMATED",
+    tags: "",
+    // ↓ fixed names to match backend schema
+    preConditions: "",
+    testDataRequirements: "",
+    environmentRequirements: "",
+    postConditions: "",
+    cleanupSteps: "",
+    estimatedDuration: "",
+    automationScriptLink: "",
   });
-  const [steps, setSteps] = useState<Step[]>([{ stepNumber: 1, action: "", expectedResult: "", testData: "" }]);
 
-  const setField = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(p => ({ ...p, [k]: e.target.value }));
+  const [steps, setSteps] = useState<Step[]>([
+    { stepNumber: 1, action: "", expectedResult: "", testData: "" },
+  ]);
 
-  const addStep = () => setSteps(p => [...p, { stepNumber: p.length + 1, action: "", expectedResult: "", testData: "" }]);
-  const removeStep = (i: number) => setSteps(p => p.filter((_, idx) => idx !== i).map((s, idx) => ({ ...s, stepNumber: idx + 1 })));
-  const setStep = (i: number, k: keyof Step) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setSteps(p => p.map((s, idx) => idx === i ? { ...s, [k]: e.target.value } : s));
+  const setField = (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setForm(p => ({ ...p, [k]: e.target.value }));
+
+  const addStep = () =>
+    setSteps(p => [...p, { stepNumber: p.length + 1, action: "", expectedResult: "", testData: "" }]);
+
+  const removeStep = (i: number) =>
+    setSteps(p => p.filter((_, idx) => idx !== i).map((s, idx) => ({ ...s, stepNumber: idx + 1 })));
+
+  const setStep = (i: number, k: keyof Step) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setSteps(p => p.map((s, idx) => idx === i ? { ...s, [k]: e.target.value } : s));
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true);
+    e.preventDefault();
+    if (!projectId) { toast.error("No project selected"); return; }
+
+    setLoading(true);
     try {
       const payload = {
-        ...form,
-        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
-        estimatedDuration: form.estimatedDuration ? parseInt(form.estimatedDuration) : undefined,
-        steps: steps.filter(s => s.action),
+        title:                form.title,
+        description:          form.description,
+        module:               form.module,
+        priority:             form.priority,
+        severity:             form.severity,
+        type:                 form.type,
+        status:               form.status,
+        automationStatus:     form.automationStatus,
+        // optional fields — only include if non-empty
+        ...(form.tags              && { tags:                  form.tags.split(",").map(t => t.trim()).filter(Boolean) }),
+        ...(form.preConditions     && { preConditions:         form.preConditions }),
+        ...(form.testDataRequirements && { testDataRequirements: form.testDataRequirements }),
+        ...(form.environmentRequirements && { environmentRequirements: form.environmentRequirements }),
+        ...(form.postConditions    && { postConditions:        form.postConditions }),
+        ...(form.cleanupSteps      && { cleanupSteps:          form.cleanupSteps }),
+        ...(form.estimatedDuration && { estimatedDuration:     parseInt(form.estimatedDuration) }),
+        ...(form.automationScriptLink && { automationScriptLink: form.automationScriptLink }),
+        steps: steps.filter(s => s.action.trim()).map(s => ({
+          stepNumber:     s.stepNumber,
+          action:         s.action,
+          expectedResult: s.expectedResult,
+          ...(s.testData && { testData: s.testData }),
+        })),
       };
-      await apiClient.post("/test-cases", payload);
+
+      await apiClient.post(`/api/projects/${projectId}/test-cases`, payload);
       toast.success("Test case created successfully!");
-      nav("/test-cases");
+      nav(`/projects/${projectId}/test-cases`);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to create test case");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div style={{ marginBottom: 28 }}>
-      <h3 style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 14, paddingBottom: 8, borderBottom: "1px solid var(--border-subtle)" }}>{title}</h3>
-      {children}
-    </div>
-  );
-
-  const Row = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>{children}</div>
-  );
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease", maxWidth: 900 }}>
@@ -61,7 +123,7 @@ export const CreateTestCasePage = () => {
           <p className="page-subtitle">Define a new test case with steps and metadata</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <Button variant="secondary" onClick={() => nav("/test-cases")}>Cancel</Button>
+          <Button variant="secondary" onClick={() => nav(`/projects/${projectId}/test-cases`)}>Cancel</Button>
           <Button loading={loading} onClick={handleSubmit as any}>Save Test Case</Button>
         </div>
       </div>
@@ -71,17 +133,36 @@ export const CreateTestCasePage = () => {
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, marginBottom: 16 }}>
           <Section title="Basic Information">
             <FormField label="Title" required>
-              <input value={form.title} onChange={setField("title")} placeholder="e.g. Verify user login with valid credentials" required maxLength={200} />
+              <input
+                value={form.title}
+                onChange={setField("title")}
+                placeholder="e.g. Verify user login with valid credentials"
+                required maxLength={200}
+              />
             </FormField>
             <FormField label="Description" required>
-              <textarea value={form.description} onChange={setField("description") as any} placeholder="Detailed description of what is being tested..." rows={3} style={{ resize: "vertical" }} required />
+              <textarea
+                value={form.description}
+                onChange={setField("description")}
+                placeholder="Detailed description of what is being tested..."
+                rows={3} style={{ resize: "vertical" }} required
+              />
             </FormField>
             <Row>
               <FormField label="Module / Feature" required>
-                <input value={form.module} onChange={setField("module")} placeholder="Authentication, User Management..." required />
+                <input
+                  value={form.module}
+                  onChange={setField("module")}
+                  placeholder="Authentication, User Management..."
+                  required
+                />
               </FormField>
               <FormField label="Tags">
-                <input value={form.tags} onChange={setField("tags")} placeholder="login, smoke, P1 (comma separated)" />
+                <input
+                  value={form.tags}
+                  onChange={setField("tags")}
+                  placeholder="login, smoke, P1 (comma separated)"
+                />
               </FormField>
             </Row>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
@@ -97,30 +178,49 @@ export const CreateTestCasePage = () => {
               </FormField>
               <FormField label="Type" required>
                 <select value={form.type} onChange={setField("type")}>
-                  {["FUNCTIONAL", "REGRESSION", "SMOKE", "INTEGRATION", "UAT", "PERFORMANCE", "SECURITY", "USABILITY"].map(v => <option key={v} value={v}>{v.replace(/_/g, " ")}</option>)}
+                  {["FUNCTIONAL","REGRESSION","SMOKE","INTEGRATION","UAT","PERFORMANCE","SECURITY","USABILITY"].map(v =>
+                    <option key={v} value={v}>{v.replace(/_/g, " ")}</option>
+                  )}
                 </select>
               </FormField>
               <FormField label="Status" required>
                 <select value={form.status} onChange={setField("status")}>
-                  {["DRAFT", "READY_FOR_REVIEW", "APPROVED", "DEPRECATED", "ARCHIVED"].map(v => <option key={v} value={v}>{v.replace(/_/g, " ")}</option>)}
+                  {["DRAFT","READY_FOR_REVIEW","APPROVED","DEPRECATED","ARCHIVED"].map(v =>
+                    <option key={v} value={v}>{v.replace(/_/g, " ")}</option>
+                  )}
                 </select>
               </FormField>
             </div>
           </Section>
         </div>
 
-        {/* Pre/Post conditions */}
+        {/* Pre-conditions */}
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, marginBottom: 16 }}>
           <Section title="Pre-conditions">
             <FormField label="Pre-conditions">
-              <textarea value={form.preconditions} onChange={setField("preconditions") as any} placeholder="Conditions that must be true before test execution..." rows={2} style={{ resize: "vertical" }} />
+              <textarea
+                value={form.preConditions}
+                onChange={setField("preConditions")}
+                placeholder="Conditions that must be true before test execution..."
+                rows={2} style={{ resize: "vertical" }}
+              />
             </FormField>
             <Row>
               <FormField label="Test Data Requirements">
-                <textarea value={form.testDataRequirements} onChange={setField("testDataRequirements") as any} placeholder="Specific data needed for testing..." rows={2} style={{ resize: "vertical" }} />
+                <textarea
+                  value={form.testDataRequirements}
+                  onChange={setField("testDataRequirements")}
+                  placeholder="Specific data needed for testing..."
+                  rows={2} style={{ resize: "vertical" }}
+                />
               </FormField>
               <FormField label="Environment Requirements">
-                <textarea value={form.environmentRequirements} onChange={setField("environmentRequirements") as any} placeholder="Browser, OS, network requirements..." rows={2} style={{ resize: "vertical" }} />
+                <textarea
+                  value={form.environmentRequirements}
+                  onChange={setField("environmentRequirements")}
+                  placeholder="Browser, OS, network requirements..."
+                  rows={2} style={{ resize: "vertical" }}
+                />
               </FormField>
             </Row>
           </Section>
@@ -137,10 +237,14 @@ export const CreateTestCasePage = () => {
               <div key={i} style={{ background: "var(--bg-elevated)", borderRadius: "var(--radius-md)", padding: 16, border: "1px solid var(--border-subtle)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--accent-muted)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: "0.75rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{step.stepNumber}</span>
+                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--accent-muted)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: "0.75rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {step.stepNumber}
+                    </span>
                     <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Step {step.stepNumber}</span>
                   </div>
-                  {steps.length > 1 && <Button variant="ghost" size="sm" onClick={() => removeStep(i)} type="button" style={{ color: "var(--danger)" }}>✕</Button>}
+                  {steps.length > 1 && (
+                    <Button variant="ghost" size="sm" onClick={() => removeStep(i)} type="button" style={{ color: "var(--danger)" }}>✕</Button>
+                  )}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <FormField label="Action" required>
@@ -158,21 +262,23 @@ export const CreateTestCasePage = () => {
           </div>
         </div>
 
-        {/* Post-conditions & metadata */}
+        {/* Post-conditions & Metadata */}
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, marginBottom: 16 }}>
           <Section title="Post-conditions & Metadata">
             <Row>
               <FormField label="Post-conditions">
-                <textarea value={form.postconditions} onChange={setField("postconditions") as any} placeholder="System state after test completion..." rows={2} style={{ resize: "vertical" }} />
+                <textarea value={form.postConditions} onChange={setField("postConditions")} placeholder="System state after test completion..." rows={2} style={{ resize: "vertical" }} />
               </FormField>
               <FormField label="Cleanup Steps">
-                <textarea value={form.cleanupSteps} onChange={setField("cleanupSteps") as any} placeholder="Actions to reset system state..." rows={2} style={{ resize: "vertical" }} />
+                <textarea value={form.cleanupSteps} onChange={setField("cleanupSteps")} placeholder="Actions to reset system state..." rows={2} style={{ resize: "vertical" }} />
               </FormField>
             </Row>
             <Row>
               <FormField label="Automation Status">
                 <select value={form.automationStatus} onChange={setField("automationStatus")}>
-                  {["NOT_AUTOMATED", "IN_PROGRESS", "AUTOMATED", "CANNOT_AUTOMATE"].map(v => <option key={v} value={v}>{v.replace(/_/g, " ")}</option>)}
+                  {["NOT_AUTOMATED","IN_PROGRESS","AUTOMATED","CANNOT_AUTOMATE"].map(v =>
+                    <option key={v} value={v}>{v.replace(/_/g, " ")}</option>
+                  )}
                 </select>
               </FormField>
               <FormField label="Estimated Duration (minutes)">
@@ -186,7 +292,7 @@ export const CreateTestCasePage = () => {
         </div>
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 8 }}>
-          <Button variant="secondary" onClick={() => nav("/test-cases")} type="button">Cancel</Button>
+          <Button variant="secondary" onClick={() => nav(`/projects/${projectId}/test-cases`)} type="button">Cancel</Button>
           <Button loading={loading} type="submit">Save Test Case</Button>
         </div>
       </form>
