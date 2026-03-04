@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { projectApi } from '../api/projectApi';
-import type { Milestone } from '../types/project.types';
+import type { Milestone, MilestoneStatus } from '../types/project.types';
 import { apiClient } from '../../../lib/axios';
 
 interface Props {
@@ -155,7 +155,7 @@ export default function MilestoneFormModal({ projectId, milestone, onClose, onSa
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
                 value={form.status}
-                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as MilestoneStatus}))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="UPCOMING">Upcoming</option>

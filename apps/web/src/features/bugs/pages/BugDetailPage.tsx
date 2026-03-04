@@ -27,7 +27,7 @@ export const BugDetailPage = () => {
   const [assignId, setAssignId] = useState("");
   const [fixModal, setFixModal] = useState(false);
   const [fixNotes, setFixNotes] = useState("");
-  const [statusModal, setStatusModal] = useState<string | null>(null);
+  const [, setStatusModal] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
 
   const isDev = user?.role === "DEVELOPER";
