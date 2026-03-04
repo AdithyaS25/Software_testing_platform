@@ -18,41 +18,41 @@ import { getAuthUser } from "../../utils/getAuthUser";
 /* ============================
    CREATE TEST CASE
 ============================ */
-
 export async function createTestCaseController(
   req: AuthenticatedRequest,
   res: Response
 ) {
+  try {
   const parsed = createTestCaseSchema.safeParse(req.body);
 
-  if (!parsed.success) {
-    return res.status(400).json({
-      message: "Invalid request body",
-      errors: parsed.error.flatten(),
-    });
-  }
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Invalid request body",
+        errors: parsed.error.flatten(),
+      });
+    }
 
-  const projectIdParam = req.params.projectId;
-  const projectId = Array.isArray(projectIdParam)
-    ? projectIdParam[0]
-    : projectIdParam;
+    const projectIdParam = req.params.projectId;
+    const projectId = Array.isArray(projectIdParam)
+      ? projectIdParam[0]
+      : projectIdParam;
 
-  if (!projectId) {
-    return res.status(400).json({ message: "Project ID is required" });
-  }
+    if (!projectId) {
+      return res.status(400).json({ message: "Project ID is required" });
+    }
 
-  const user = getAuthUser(req);
+    const user = getAuthUser(req);
 
-  const testCase = await createTestCase(
-    projectId,
-    parsed.data,
-    user.id
-  );
+    const testCase = await createTestCase(projectId, parsed.data, user.id);
 
-  return res.status(201).json({
+    return res.status(201).json({
     message: "Test case created successfully",
     data: testCase,
   });
+  } catch (err: any) {
+    console.error("❌ createTestCase error:", err);
+    return res.status(500).json({ message: err?.message ?? "Failed to create test case" });
+  }
 }
 
 /* ============================

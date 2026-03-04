@@ -8,6 +8,13 @@ import {
   createBug, listBugs, listMyBugs, getBugById,
   updateBugStatus, assignBug, addBugComment, deleteBugComment,
 } from "./bug.service";
+import {
+  notifyBugAssigned,
+  notifyBugStatusChanged,
+  notifyCommentMention,
+  notifyRetestRequested,
+} from "../notification/notification.service";
+import { prisma } from "../../prisma";
 
 /* ── Create Bug ─────────────────────────────────────────── */
 export async function createBugController(req: Request, res: Response) {
@@ -20,6 +27,17 @@ export async function createBugController(req: Request, res: Response) {
   }
 
   const bug = await createBug(projectId, parsed.data, userId);
+
+  if (bug.assignedToId) {
+    notifyBugAssigned({
+      assignedToId: bug.assignedToId,
+      bugId:        bug.bugId,
+      bugTitle:     bug.title,
+      projectId:    bug.projectId,
+      internalId:   bug.id,
+    }).catch(console.error);
+  }
+
   return res.status(201).json({ success: true, data: bug });
 }
 
@@ -39,16 +57,49 @@ export async function getBugsController(req: Request, res: Response) {
 /* ── Update Status ──────────────────────────────────────── */
 export async function updateBugStatusController(req: Request, res: Response) {
   const projectId = String(req.params.projectId);
-const id        = String(req.params.id);
-  const userId = req.user?.id!;
+  const id        = String(req.params.id);
+  const userId    = req.user?.id!;
 
   const parsed = updateBugStatusSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ success: false, message: "Validation error", errors: parsed.error.flatten() });
   }
 
+  // Fetch raw bug BEFORE update — plain findFirst with no include/select
+  // gives us the full scalar Bug type (status, assignedToId, resolvedById etc.)
+  // Bug model has NO createdById — reporter tracking doesn't exist on this schema
+  const rawBugBefore        = await prisma.bug.findFirst({ where: { id, projectId } });
+  const previousStatus      = rawBugBefore?.status      ?? "";
+  const previousAssignedToId = rawBugBefore?.assignedToId ?? null;
+
   const bug = await updateBugStatus(projectId, id, parsed.data, userId);
   if (!bug) return res.status(404).json({ success: false, message: "Bug not found" });
+
+  // Notify on status change — notify the person making the change + assignee
+  if (bug.status !== previousStatus) {
+    notifyBugStatusChanged({
+      reporterId:   userId,              // person triggering the change
+      assignedToId: bug.assignedToId ?? null,
+      bugId:        bug.bugId,
+      bugTitle:     bug.title,
+      newStatus:    bug.status,
+      projectId:    bug.projectId,
+      internalId:   bug.id,
+    }).catch(console.error);
+  }
+
+  // Re-test notification: when bug moves to FIXED, notify the current assignee
+  // (Bug has no createdById — assignee is the closest proxy for "who should re-test")
+  // If your workflow has a separate tester field in future, swap previousAssignedToId here
+  if (bug.status === "FIXED" && previousStatus !== "FIXED" && previousAssignedToId) {
+    notifyRetestRequested({
+      testerId:   previousAssignedToId,  // notify whoever was assigned before fix
+      bugId:      bug.bugId,
+      bugTitle:   bug.title,
+      projectId:  bug.projectId,
+      internalId: bug.id,
+    }).catch(console.error);
+  }
 
   return res.status(200).json({ success: true, data: bug });
 }
@@ -56,15 +107,28 @@ const id        = String(req.params.id);
 /* ── Assign Bug ─────────────────────────────────────────── */
 export async function assignBugController(req: Request, res: Response) {
   const projectId = String(req.params.projectId);
-const id        = String(req.params.id);
+  const id        = String(req.params.id);
 
   const parsed = assignBugSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ success: false, message: "Validation error", errors: parsed.error.flatten() });
   }
 
+  const rawBugBefore         = await prisma.bug.findFirst({ where: { id, projectId } });
+  const previousAssignedToId = rawBugBefore?.assignedToId ?? null;
+
   const bug = await assignBug(projectId, id, parsed.data);
   if (!bug) return res.status(404).json({ success: false, message: "Bug not found" });
+
+  if (bug.assignedToId && bug.assignedToId !== previousAssignedToId) {
+    notifyBugAssigned({
+      assignedToId: bug.assignedToId,
+      bugId:        bug.bugId,
+      bugTitle:     bug.title,
+      projectId:    bug.projectId,
+      internalId:   bug.id,
+    }).catch(console.error);
+  }
 
   return res.status(200).json({ success: true, data: bug });
 }
@@ -72,8 +136,8 @@ const id        = String(req.params.id);
 /* ── Add Comment ────────────────────────────────────────── */
 export async function addCommentController(req: Request, res: Response) {
   const projectId = String(req.params.projectId);
-const id        = String(req.params.id);
-  const userId = req.user?.id!;
+  const id        = String(req.params.id);
+  const userId    = req.user?.id!;
 
   const parsed = createBugCommentSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -83,12 +147,44 @@ const id        = String(req.params.id);
   const comment = await addBugComment(projectId, id, parsed.data, userId);
   if (!comment) return res.status(404).json({ success: false, message: "Bug not found" });
 
+  // @mention detection
+  const content      = parsed.data.content as string;
+  const mentionRegex = /@([\w.+-]+@[\w.-]+\.[a-z]{2,})/gi;
+  const matches      = [...content.matchAll(mentionRegex)].map((m) => m[1]);
+
+  if (matches.length > 0) {
+    const [author, bug] = await Promise.all([
+      prisma.user.findFirst({ where: { id: userId }, select: { email: true } }),
+      prisma.bug.findFirst({ where: { id, projectId } }),
+    ]);
+
+    if (author && bug) {
+      for (const emailAddr of matches) {
+        // Assert emailAddr as string — regex guarantees it is never undefined
+        const mentioned = await prisma.user.findFirst({
+          where: { email: emailAddr as string },
+          select: { id: true },
+        });
+        if (mentioned && mentioned.id !== userId) {
+          notifyCommentMention({
+            mentionedUserId: mentioned.id,
+            authorEmail:     author.email,
+            bugId:           bug.bugId,
+            bugTitle:        bug.title,
+            projectId:       bug.projectId,
+            internalId:      bug.id,
+          }).catch(console.error);
+        }
+      }
+    }
+  }
+
   return res.status(201).json({ success: true, data: comment });
 }
 
 /* ── Delete Comment ─────────────────────────────────────── */
 export async function deleteCommentController(req: Request, res: Response) {
-  const id     = String(req.params.id); // ← was: const { id } = req.params
+  const id     = String(req.params.id);
   const userId = req.user?.id!;
 
   const comment = await deleteBugComment(id, userId);

@@ -1,6 +1,7 @@
 // File: apps/api/src/modules/project/project.controller.ts
 
 import { Request, Response, NextFunction } from 'express';
+import { prisma } from "../../prisma";
 import * as projectService from './project.service';
 
 // ─────────────────────────────────────────────────────────────
@@ -62,13 +63,54 @@ export async function updateProject(req: Request, res: Response, next: NextFunct
   }
 }
 
+// AFTER
 export async function deleteProject(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await projectService.deleteProject(
-      getParam(req.params.projectId, 'projectId'),
-      req.user!.id
-    );
+    const projectId = req.params.projectId as string;
+    if (!projectId) {
+      return res.status(400).json({ success: false, message: 'Missing projectId' });
+    }
+    const result = await projectService.deleteProject(projectId, req.user!.id);
     res.json({ success: true, data: result });
+  } catch (err: any) {
+    const msg: string = err?.message ?? '';
+    if (msg.toLowerCase().includes('forbidden') || msg.toLowerCase().includes('not owner') || msg.toLowerCase().includes('permission')) {
+      return res.status(403).json({ success: false, message: 'You do not have permission to delete this project' });
+    }
+    next(err);
+  }
+}
+
+export async function getMembers(req: Request, res: Response, next: NextFunction) {
+  try {
+    const projectId = req.params.projectId as string;
+
+    const members = await prisma.projectMember.findMany({
+      where: { projectId },
+      include: {
+        user: { select: { id: true, email: true, role: true } },
+      },
+    });
+
+    // Also include the owner in case they're not in ProjectMember table
+    const project = await prisma.project.findFirst({
+      where: { id: projectId },
+      select: { owner: { select: { id: true, email: true, role: true } } },
+    });
+
+    // Merge owner + members, deduplicate by id
+    const allUsers = [
+      ...(project?.owner ? [{ user: project.owner }] : []),
+      ...members,
+    ];
+    const seen = new Set<string>();
+    const unique = allUsers.filter(m => {
+      if (seen.has(m.user.id)) return false;
+      seen.add(m.user.id);
+      return true;
+    });
+
+    res.json({ success: true, data: unique });
   } catch (err) {
     next(err);
   }

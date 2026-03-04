@@ -48,9 +48,11 @@ async function assertProjectOwner(projectId: string, userId: string) {
     where: { id: projectId },
     select: { ownerId: true },
   });
-  if (!project) throw new AppError('Project not found', 404);
+  if (!project) {
+    throw new Error('Project not found');
+  }
   if (project.ownerId !== userId) {
-    throw new AppError('Only the project owner can perform this action', 403);
+    throw new Error('Forbidden: not owner'); // ← must say "forbidden" for controller catch to work
   }
 }
 
@@ -133,10 +135,9 @@ export async function updateProject(
 
 export async function deleteProject(projectId: string, userId: string) {
   await assertProjectOwner(projectId, userId);
-  return prisma.project.update({
+  return prisma.project.delete({
     where: { id: projectId },
-    data: { status: 'ARCHIVED' },
-    select: { id: true, status: true },
+    select: { id: true },
   });
 }
 
