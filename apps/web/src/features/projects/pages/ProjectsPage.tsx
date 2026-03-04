@@ -5,19 +5,22 @@ import { useNavigate } from 'react-router-dom';
 import { projectApi } from '../api/projectApi';
 import type { Project } from '../types/project.types';
 import CreateProjectModal from '../components/CreateProjectModal';
+import { ConfirmDialog } from '../../../shared/components/ui';
 
 const statusStyle: Record<string, { bg: string; color: string }> = {
-  ACTIVE:    { bg: 'var(--success-muted, rgba(34,197,94,0.12))',  color: 'var(--success, #16a34a)' },
-  ARCHIVED:  { bg: 'var(--bg-elevated)',                          color: 'var(--text-muted)' },
-  COMPLETED: { bg: 'var(--accent-muted)',                         color: 'var(--accent)' },
+  ACTIVE:    { bg: 'var(--success-muted, rgba(34,197,94,0.12))', color: 'var(--success, #16a34a)' },
+  ARCHIVED:  { bg: 'var(--bg-elevated)',                         color: 'var(--text-muted)' },
+  COMPLETED: { bg: 'var(--accent-muted)',                        color: 'var(--accent)' },
 };
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [projects, setProjects]           = useState<Project[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [deleteTarget, setDeleteTarget]   = useState<Project | null>(null);
+  const [deleting, setDeleting]           = useState(false);
 
   const fetchProjects = async () => {
     try {
@@ -36,6 +39,21 @@ export default function ProjectsPage() {
   const handleCreated = (project: Project) => {
     setShowCreateModal(false);
     navigate(`/projects/${project.id}/dashboard`);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await projectApi.delete(deleteTarget.id);
+      setProjects(p => p.filter(proj => proj.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch {
+      // keep dialog open, show nothing — a toast would need useToast import
+      alert('Failed to delete project. You may not have permission.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) return (
@@ -80,8 +98,8 @@ export default function ProjectsPage() {
       {/* Empty state */}
       {projects.length === 0 && (
         <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          padding: '80px 20px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', padding: '80px 20px',
           background: 'var(--bg-surface)', border: '1px dashed var(--border)',
           borderRadius: 'var(--radius-lg)', textAlign: 'center',
         }}>
@@ -115,6 +133,7 @@ export default function ProjectsPage() {
               background: 'var(--bg-surface)', border: '1px solid var(--border)',
               borderRadius: 'var(--radius-lg)', padding: 20,
               cursor: 'pointer', transition: 'all var(--transition)',
+              position: 'relative',
             }}
             onMouseEnter={e => {
               (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--accent)';
@@ -125,7 +144,7 @@ export default function ProjectsPage() {
               (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
             }}
           >
-            {/* Top row: key + status */}
+            {/* Top row: key + status + delete */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{
                 background: 'var(--accent-muted)', color: 'var(--accent)',
@@ -135,14 +154,46 @@ export default function ProjectsPage() {
               }}>
                 {project.key}
               </span>
-              <span style={{
-                fontSize: '0.7rem', fontWeight: 600, padding: '3px 8px',
-                borderRadius: 10,
-                background: statusStyle[project.status]?.bg ?? 'var(--bg-elevated)',
-                color: statusStyle[project.status]?.color ?? 'var(--text-muted)',
-              }}>
-                {project.status}
-              </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  fontSize: '0.7rem', fontWeight: 600, padding: '3px 8px',
+                  borderRadius: 10,
+                  background: statusStyle[project.status]?.bg ?? 'var(--bg-elevated)',
+                  color: statusStyle[project.status]?.color ?? 'var(--text-muted)',
+                }}>
+                  {project.status}
+                </span>
+
+                {/* ── Delete button ── */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // prevent navigating into project
+                    setDeleteTarget(project);
+                  }}
+                  title="Delete project"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 26, height: 26, borderRadius: 'var(--radius-sm)',
+                    border: '1px solid transparent',
+                    background: 'transparent', color: 'var(--text-muted)',
+                    cursor: 'pointer', fontSize: '0.8rem',
+                    transition: 'all var(--transition)',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'var(--danger-muted)';
+                    e.currentTarget.style.borderColor = 'rgba(255,77,106,0.3)';
+                    e.currentTarget.style.color = 'var(--danger)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                  }}
+                >
+                  🗑
+                </button>
+              </div>
             </div>
 
             {/* Name */}
@@ -190,12 +241,24 @@ export default function ProjectsPage() {
         ))}
       </div>
 
+      {/* Create modal */}
       {showCreateModal && (
         <CreateProjectModal
           onClose={() => setShowCreateModal(false)}
           onCreated={handleCreated}
         />
       )}
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${deleteTarget?.name}"? This will permanently remove all test cases, bugs, runs, and data associated with this project. This action cannot be undone.`}
+        confirmLabel={deleting ? 'Deleting...' : 'Delete Project'}
+        variant="danger"
+      />
     </div>
   );
 }

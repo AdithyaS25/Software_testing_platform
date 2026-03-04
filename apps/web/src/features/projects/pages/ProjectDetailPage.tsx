@@ -4,26 +4,26 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { projectApi } from '../api/projectApi';
 import type { Project } from '../types/project.types';
-import ProjectOverviewTab from '../components/ProjectOverviewTab';
-import ProjectMembersTab from '../components/ProjectMembersTab';
-import ProjectSettingsTab from '../components/ProjectSettingsTab';
-import ProjectMilestonesTab from '../components/ProjectMilestonesTab';
+import ProjectOverviewTab    from '../components/ProjectOverviewTab';
+import ProjectMembersTab     from '../components/ProjectMembersTab';
+import ProjectSettingsTab    from '../components/ProjectSettingsTab';
+import ProjectMilestonesTab  from '../components/ProjectMilestonesTab';
 
 type Tab = 'overview' | 'milestones' | 'members' | 'settings';
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'milestones', label: 'Milestones' },
-  { key: 'members', label: 'Members' },
-  { key: 'settings', label: 'Settings' },
+const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: 'overview',   label: 'Overview',   icon: '▦' },
+  { key: 'milestones', label: 'Milestones', icon: '🎯' },
+  { key: 'members',    label: 'Members',    icon: '👥' },
+  { key: 'settings',   label: 'Settings',   icon: '⚙' },
 ];
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [project,   setProject]   = useState<Project | null>(null);
+  const [loading,   setLoading]   = useState(true);
+  const [activeTab, setActiveTab] = useState<Tab>('members');
 
   const fetchProject = async () => {
     if (!projectId) return;
@@ -38,80 +38,81 @@ export default function ProjectDetailPage() {
     }
   };
 
-  useEffect(() => {
-    fetchProject();
-  }, [projectId]);
+  useEffect(() => { fetchProject(); }, [projectId]);
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading project...</div>;
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: 80 }}>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading project...</div>
+    </div>
+  );
   if (!project) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Project Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-5">
-          <div className="flex items-center gap-3 mb-1">
+    <div style={{ animation: 'fadeIn 0.3s ease' }}>
+      {/* Page header */}
+      <div className="page-header" style={{ marginBottom: 24 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <button
               onClick={() => navigate('/projects')}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', fontSize: '0.85rem', padding: 0,
+              }}
             >
               ← Projects
             </button>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="bg-indigo-100 text-indigo-700 text-sm font-bold px-2.5 py-1 rounded">
+            <span style={{ color: 'var(--border)', fontSize: '0.85rem' }}>/</span>
+            <span style={{
+              background: 'var(--accent-muted)', color: 'var(--accent)',
+              fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)',
+            }}>
               {project.key}
             </span>
-            <h1 className="text-xl font-bold text-gray-900">{project.name}</h1>
-            <span
-              className={`text-xs px-2 py-1 rounded-full font-medium ${
-                project.status === 'ACTIVE'
-                  ? 'bg-green-100 text-green-700'
-                  : project.status === 'COMPLETED'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {project.status}
-            </span>
           </div>
+          <h1 className="page-title">{project.name}</h1>
           {project.description && (
-            <p className="text-sm text-gray-500 mt-1">{project.description}</p>
+            <p className="page-subtitle">{project.description}</p>
           )}
-
-          {/* Tabs */}
-          <div className="flex gap-6 mt-5 -mb-px">
-            {TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`pb-3 text-sm font-medium border-b-2 transition ${
-                  activeTab === tab.key
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
-      {/* Tab Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        {activeTab === 'overview' && (
-          <ProjectOverviewTab project={project} />
-        )}
-        {activeTab === 'milestones' && (
-          <ProjectMilestonesTab projectId={project.id} />
-        )}
-        {activeTab === 'members' && (
-          <ProjectMembersTab project={project} onRefresh={fetchProject} />
-        )}
-        {activeTab === 'settings' && (
-          <ProjectSettingsTab project={project} onUpdated={fetchProject} />
-        )}
+      {/* Tab bar */}
+      <div style={{
+        display: 'flex', gap: 2,
+        borderBottom: '1px solid var(--border)',
+        marginBottom: 24,
+      }}>
+        {TABS.map(tab => {
+          const active = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '9px 16px', fontSize: '0.875rem', fontWeight: active ? 600 : 400,
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+                borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
+                marginBottom: -1, transition: 'all var(--transition)',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab content */}
+      <div>
+        {activeTab === 'overview'   && <ProjectOverviewTab   project={project} />}
+        {activeTab === 'milestones' && <ProjectMilestonesTab projectId={project.id} />}
+        {activeTab === 'members'    && <ProjectMembersTab    project={project} onRefresh={fetchProject} />}
+        {activeTab === 'settings'   && <ProjectSettingsTab   project={project} onUpdated={fetchProject} />}
       </div>
     </div>
   );
