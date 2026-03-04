@@ -6,7 +6,7 @@ const urlOrEmpty = z.string().optional().transform(v => v === "" ? undefined : v
 export const createTestCaseSchema = z.object({
   title:       z.string().min(1).max(200),
   projectId:   z.string().cuid().optional(),
-  description: z.string().min(1),
+  description: z.string().optional(),
   module:      z.string().min(1),
   priority: z.enum(["CRITICAL","HIGH","MEDIUM","LOW"]),
   severity: z.enum(["BLOCKER","CRITICAL","MAJOR","MINOR","TRIVIAL"]),

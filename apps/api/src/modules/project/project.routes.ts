@@ -61,7 +61,6 @@ router.patch(
 // DELETE /api/projects/:projectId
 router.delete(
   "/:projectId",
-  validate(projectIdParamSchema),
   controller.deleteProject
 );
 
@@ -70,6 +69,13 @@ router.delete(
 ======================= */
 
 // Members
+
+// GET /api/projects/:projectId/members
+router.get(
+  "/:projectId/members",
+  controller.getMembers          // no validate() — accepts any string projectId
+);
+
 router.post(
   "/:projectId/members",
   validate(addMembersSchema),
@@ -162,6 +168,7 @@ router.delete(
   validate(milestoneParamSchema),
   controller.unlinkTestRun
 );
+
 
 /* =======================
    NESTED RESOURCE ROUTERS

@@ -8,6 +8,7 @@ import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
 import path from "path";
 import projectRoutes from './modules/project/project.routes';
+import notificationRoutes from "./modules/notification/notification.routes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -30,6 +31,7 @@ app.use(cookieParser());
 app.use("/auth", authRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/projects", projectRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 /* =======================
    HEALTH CHECK
