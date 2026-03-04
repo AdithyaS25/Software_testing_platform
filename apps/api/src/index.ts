@@ -33,6 +33,14 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/projects", projectRoutes);
 app.use("/api/notifications", notificationRoutes);
 
+
+app.get("/", (req, res) => {
+  res.json({
+    status: "OK",
+    message: "TestTrack Pro API is running",
+  });
+});
+
 /* =======================
    HEALTH CHECK
    ======================= */
