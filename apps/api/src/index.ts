@@ -16,19 +16,24 @@ const PORT = process.env.PORT || 4000;
 /* =======================
    MIDDLEWARE
    ======================= */
-app.use(
-  cors({
-    origin: true, // frontend URL
-    credentials: true,              // VERY IMPORTANT
-  })
-);
+// In your Express app setup
+app.use(cors({
+  origin: [
+    "https://testtrack-pro-nu.vercel.app",
+    "http://localhost:5173", // keep local dev working
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
 app.use(express.json());
 app.use(cookieParser());
 
 /* =======================
    ROUTES
    ======================= */
-app.use("/auth", authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/projects", projectRoutes);
 app.use("/api/notifications", notificationRoutes);

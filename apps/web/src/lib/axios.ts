@@ -21,7 +21,7 @@ apiClient.interceptors.response.use(
       const refreshToken = sessionStorage.getItem("refreshToken");
       if (refreshToken) {
         try {
-          const res = await axios.post("http://localhost:4000/auth/refresh", { refreshToken });
+          const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/refresh`, { refreshToken });
           sessionStorage.setItem("accessToken", res.data.accessToken);
           original.headers.Authorization = `Bearer ${res.data.accessToken}`;
           return apiClient(original);
