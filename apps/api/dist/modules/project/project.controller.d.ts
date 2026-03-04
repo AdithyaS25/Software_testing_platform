@@ -1,0 +1,21 @@
+import { Request, Response, NextFunction } from 'express';
+export declare function createProject(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function getAllProjects(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function getProjectById(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function updateProject(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function deleteProject(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getMembers(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function addMembers(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function removeMember(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function upsertEnvironment(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function deleteEnvironment(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function upsertCustomField(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function deleteCustomField(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function createMilestone(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function getMilestones(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function getMilestoneById(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function updateMilestone(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function deleteMilestone(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function linkTestRuns(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function unlinkTestRun(req: Request, res: Response, next: NextFunction): Promise<void>;
+//# sourceMappingURL=project.controller.d.ts.map

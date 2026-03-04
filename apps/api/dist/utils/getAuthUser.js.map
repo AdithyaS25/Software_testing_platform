@@ -1,0 +1,1 @@
+{"version":3,"file":"getAuthUser.js","sourceRoot":"","sources":["../../src/utils/getAuthUser.ts"],"names":[],"mappings":";;AAEA,kCAKC;AALD,SAAgB,WAAW,CAAC,GAAyB;IACnD,IAAI,CAAC,GAAG,CAAC,IAAI,EAAE,CAAC;QACd,MAAM,IAAI,KAAK,CAAC,yCAAyC,CAAC,CAAC;IAC7D,CAAC;IACD,OAAO,GAAG,CAAC,IAAI,CAAC;AAClB,CAAC"}

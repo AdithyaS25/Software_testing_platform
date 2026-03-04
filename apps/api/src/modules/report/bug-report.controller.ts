@@ -5,7 +5,9 @@ export const getBugReportController = async (
   req: Request,
   res: Response
 ) => {
-  const report = await generateBugReport();
+  const projectId = req.params.projectId as string;
+
+  const report = await generateBugReport(projectId);
 
   return res.status(200).json({
     success: true,
