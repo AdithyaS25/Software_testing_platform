@@ -34,19 +34,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const res = await apiClient.post("/auth/login", { email, password });
-    sessionStorage.setItem("accessToken", res.data.accessToken);
-    if (res.data.refreshToken) sessionStorage.setItem("refreshToken", res.data.refreshToken);
-    const payload = JSON.parse(atob(res.data.accessToken.split(".")[1]));
-    setUser({ id: payload.userId || payload.id, email: payload.email, role: payload.role });
-  };
+  const res = await apiClient.post("/api/auth/login", { email, password });
+  sessionStorage.setItem("accessToken", res.data.accessToken);
+  if (res.data.refreshToken) sessionStorage.setItem("refreshToken", res.data.refreshToken);
+  const payload = JSON.parse(atob(res.data.accessToken.split(".")[1]));
+  setUser({ id: payload.userId || payload.id, email: payload.email, role: payload.role });
+};
 
-  const logout = async () => {
-    try { await apiClient.post("/auth/logout-all"); } catch {}
-    sessionStorage.clear();
-    setUser(null);
-    window.location.href = "/login";
-  };
+const logout = async () => {
+  try { await apiClient.post("/api/auth/logout-all"); } catch {}
+  sessionStorage.clear();
+  setUser(null);
+  window.location.href = "/login";
+};
 
   return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
 };

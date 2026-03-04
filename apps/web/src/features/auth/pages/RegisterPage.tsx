@@ -17,7 +17,7 @@ export const RegisterPage = () => {
     e.preventDefault();
     setError(""); setLoading(true);
     try {
-      await apiClient.post("/auth/register", form);
+      await apiClient.post("/api/auth/register", form);
       toast.success("Account created! Please check your email to verify.");
       nav("/login");
     } catch (err: any) {

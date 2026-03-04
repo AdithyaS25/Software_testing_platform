@@ -12,7 +12,7 @@ export const ForgotPasswordPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError("");
     try {
-      await apiClient.post("/auth/forgot-password", { email });
+      await apiClient.post("/api/auth/forgot-password", { email });
       setSent(true);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Failed to send reset email.");
