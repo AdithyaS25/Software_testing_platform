@@ -41,7 +41,7 @@ export const projectApi = {
   },
 
   delete: async (projectId: string): Promise<void> => {
-    await apiClient.delete(`${BASE}/${projectId}`);
+    await apiClient.delete(`/api/projects/${projectId}`);
   },
 
   // ─── Members

@@ -1,24 +1,27 @@
 // File: apps/web/src/app/routes/AppRoutes.tsx
-// CHANGES: Added milestones route. Executions has two routes (with and without testCaseId).
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider";
-import { AppLayout } from "../../layouts/AppLayout";
-import { LoginPage }          from "../../features/auth/pages/LoginPage";
-import { RegisterPage }       from "../../features/auth/pages/RegisterPage";
-import { ForgotPasswordPage } from "../../features/auth/pages/ForgotPasswordPage";
-import { DashboardPage }      from "../../features/dashboard/pages/DashboardPage";
-import { TestCasesPage }      from "../../features/testcases/pages/TestCasesPage";
-import { TestCaseDetailPage } from "../../features/testcases/pages/TestCaseDetailPage";
-import { CreateTestCasePage } from "../../features/testcases/pages/CreateTestCasePage";
-import { BugsPage }           from "../../features/bugs/pages/BugsPage";
-import { CreateBugPage }      from "../../features/bugs/pages/CreateBugPage";
-import { BugDetailPage }      from "../../features/bugs/pages/BugDetailPage";
-import { ExecutionPage }      from "../../features/execution/pages/ExecutionPage";
-import { TestSuitesPage }     from "../../features/testsuites/pages/TestSuitesPage";
-import { TestRunsPage }       from "../../features/testruns/pages/TestRunsPage";
-import { ReportsPage }        from "../../features/reports/pages/ReportsPage";
-import { MilestonesPage }     from "../../features/milestones/pages/MilestonesPage";
-import ProjectsPage           from "../../features/projects/pages/ProjectsPage";
+import { AppLayout }              from "../../layouts/AppLayout";
+import { LoginPage }              from "../../features/auth/pages/LoginPage";
+import { RegisterPage }           from "../../features/auth/pages/RegisterPage";
+import { ForgotPasswordPage }     from "../../features/auth/pages/ForgotPasswordPage";
+import { DashboardPage }          from "../../features/dashboard/pages/DashboardPage";
+import { TestCasesPage }          from "../../features/testcases/pages/TestCasesPage";
+import { TestCaseDetailPage }     from "../../features/testcases/pages/TestCaseDetailPage";
+import { CreateTestCasePage }     from "../../features/testcases/pages/CreateTestCasePage";
+import { BugsPage }               from "../../features/bugs/pages/BugsPage";
+import { CreateBugPage }          from "../../features/bugs/pages/CreateBugPage";
+import { BugDetailPage }          from "../../features/bugs/pages/BugDetailPage";
+import { ExecutionPage }          from "../../features/execution/pages/ExecutionPage";
+import { TestSuitesPage }         from "../../features/testsuites/pages/TestSuitesPage";
+import { TestRunsPage }           from "../../features/testruns/pages/TestRunsPage";
+import { ReportsPage }            from "../../features/reports/pages/ReportsPage";
+import { MilestonesPage }         from "../../features/milestones/pages/MilestonesPage";
+import ProjectsPage               from "../../features/projects/pages/ProjectsPage";
+import ProjectDetailPage          from "../../features/projects/pages/ProjectDetailPage";
+// ── Notifications ──────────────────────────────────────────────────
+import { NotificationsPage }           from "../../features/notifications/pages/NotificationsPage";
+import { NotificationPreferencesPage } from "../../features/notifications/pages/NotificationPreferencesPage";
 
 const ProtectedRoute = ({ children, roles }: { children: React.ReactNode; roles?: string[] }) => {
   const { user, loading } = useAuth();
@@ -39,8 +42,13 @@ export const AppRoutes = () => {
 
         <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/projects" replace />} />
-          <Route path="projects" element={<ProjectsPage />} />
 
+          {/* Global pages */}
+          <Route path="projects"                  element={<ProjectsPage />} />
+          <Route path="notifications"             element={<NotificationsPage />} />
+          <Route path="notifications/preferences" element={<NotificationPreferencesPage />} />
+
+          {/* Project-scoped pages */}
           <Route path="projects/:projectId" element={<Outlet />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"      element={<DashboardPage />} />
@@ -56,6 +64,8 @@ export const AppRoutes = () => {
             <Route path="test-runs"      element={<TestRunsPage />} />
             <Route path="milestones"     element={<MilestonesPage />} />
             <Route path="reports"        element={<ReportsPage />} />
+            {/* Project settings — members, overview, milestones, settings tabs */}
+            <Route path="settings"       element={<ProjectDetailPage />} />
           </Route>
         </Route>
 
