@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 4000;
    MIDDLEWARE
    ======================= */
 app.use((0, cors_1.default)({
-    origin: "http://localhost:5173", // frontend URL
+    origin: true, // frontend URL
     credentials: true, // VERY IMPORTANT
 }));
 app.use(express_1.default.json());
@@ -32,6 +32,12 @@ app.use("/auth", auth_routes_1.default);
 app.use("/uploads", express_1.default.static(path_1.default.join(__dirname, "../uploads")));
 app.use("/api/projects", project_routes_1.default);
 app.use("/api/notifications", notification_routes_1.default);
+app.get("/", (req, res) => {
+    res.json({
+        status: "OK",
+        message: "TestTrack Pro API is running",
+    });
+});
 /* =======================
    HEALTH CHECK
    ======================= */
