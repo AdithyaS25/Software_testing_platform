@@ -1,3 +1,5 @@
+// File: apps/api/src/modules/testCase/testCase.service.ts
+
 import { prisma } from "../../prisma";
 import { CreateTestCaseInput, UpdateTestCaseInput } from "./testCase.schema";
 import {
@@ -10,17 +12,10 @@ import {
    ID GENERATION
 ============================ */
 
-/**
- * Generates a unique testCaseId by finding the highest existing sequence
- * number across ALL test cases (globally), then incrementing it.
- * Using count() causes collisions when records are deleted or when
- * multiple projects exist — max sequence is always safe.
- */
 async function nextTestCaseId(tx: typeof prisma): Promise<string> {
   const year = new Date().getFullYear();
   const prefix = `TC-${year}-`;
 
-  // Find the highest sequence number used this year
   const last = await tx.testCase.findFirst({
     where: { testCaseId: { startsWith: prefix } },
     orderBy: { testCaseId: "desc" },
@@ -107,7 +102,12 @@ export async function listTestCases(
 ) {
   const { page, limit, status, priority, module, search, userId, role } = params;
   const skip = (page - 1) * limit;
-  const where: any = { projectId };
+
+  const where: any = {
+    projectId,
+    // ✅ Bug 1 fixed: always exclude ARCHIVED (soft-deleted) test cases from list
+    status: { not: TestCaseStatus.ARCHIVED },
+  };
 
   if (search) {
     where.OR = [
@@ -121,7 +121,9 @@ export async function listTestCases(
     where.createdById = userId;
   }
 
-  if (status)   where.status   = status;
+  // ✅ Only apply status filter if explicitly passed AND it's not ARCHIVED
+  // (we always exclude ARCHIVED above, so if user filters by ARCHIVED, show nothing)
+  if (status) where.status = status;
   if (priority) where.priority = priority;
   if (module)   where.module   = module;
 
@@ -279,6 +281,7 @@ export async function deleteTestCase(
   const existing = await prisma.testCase.findFirst({ where });
   if (!existing) return null;
 
+  // Soft-delete: mark as ARCHIVED so listTestCases excludes it
   return prisma.testCase.update({
     where: { id },
     data: { status: TestCaseStatus.ARCHIVED },

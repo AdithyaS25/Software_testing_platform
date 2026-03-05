@@ -1,7 +1,7 @@
 // File: apps/api/src/modules/project/project.service.ts
 
 import { prisma } from '../../prisma';
-import { AppError } from '../../utils/errors'; // ← match YOUR existing AppError import path
+import { AppError } from '../../utils/errors';
 import {
   CreateProjectInput,
   UpdateProjectInput,
@@ -52,7 +52,7 @@ async function assertProjectOwner(projectId: string, userId: string) {
     throw new Error('Project not found');
   }
   if (project.ownerId !== userId) {
-    throw new Error('Forbidden: not owner'); // ← must say "forbidden" for controller catch to work
+    throw new Error('Forbidden: not owner');
   }
 }
 
@@ -65,7 +65,7 @@ export async function createProject(userId: string, data: CreateProjectInput) {
   return prisma.project.create({
     data: {
       name: data.name,
-      description: data.description ?? null,  // undefined → null
+      description: data.description ?? null,
       key: data.key,
       ownerId: userId,
       members: {
@@ -81,10 +81,18 @@ export async function createProject(userId: string, data: CreateProjectInput) {
   });
 }
 
+// ✅ Bug 3 fixed: exclude ARCHIVED and DELETED from the default project list
 export async function getAllProjects(userId: string) {
   return prisma.project.findMany({
     where: {
-      OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+      AND: [
+        {
+          OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+        },
+        {
+          status: { not: 'ARCHIVED' },
+        },
+      ],
     },
     select: projectSelect,
     orderBy: { updatedAt: 'desc' },
@@ -120,7 +128,6 @@ export async function updateProject(
 ) {
   await assertProjectOwner(projectId, userId);
 
-  // Build update object only with defined fields (exactOptionalPropertyTypes fix)
   const updateData: Record<string, unknown> = {};
   if (data.name !== undefined) updateData.name = data.name;
   if (data.description !== undefined) updateData.description = data.description ?? null;
@@ -133,10 +140,14 @@ export async function updateProject(
   });
 }
 
+// ✅ Bug 3 fixed: soft-delete instead of hard delete, so relations are preserved
+// Also allows project owner of any role (not just ADMIN) to delete
 export async function deleteProject(projectId: string, userId: string) {
   await assertProjectOwner(projectId, userId);
-  return prisma.project.delete({
+
+  return prisma.project.update({
     where: { id: projectId },
+    data: { status: 'ARCHIVED' },
     select: { id: true },
   });
 }
@@ -191,7 +202,7 @@ export async function upsertEnvironment(
 ) {
   await assertProjectAccess(projectId, userId);
 
-  const url = data.url ?? null; // undefined → null
+  const url = data.url ?? null;
 
   if (envId) {
     return prisma.projectEnvironment.update({
@@ -252,7 +263,6 @@ async function computeMilestoneProgress(milestoneId: string) {
 
   const passRates: number[] = [];
   for (const entry of linked) {
-    // fix: your model is 'execution' not 'testExecution'
     const executions = await prisma.execution.aggregate({
       where: { testRunId: entry.testRunId },
       _count: { id: true },
@@ -298,22 +308,14 @@ export async function createMilestone(
 
       ...(data.testRunIds && data.testRunIds.length > 0 && {
         testRuns: {
-          create: data.testRunIds.map((testRunId) => ({
-            testRunId,
-          })),
+          create: data.testRunIds.map((testRunId) => ({ testRunId })),
         },
       }),
     },
     include: {
       testRuns: {
         include: {
-          testRun: {
-            select: {
-              id: true,
-              name: true,
-              status: true,
-            },
-          },
+          testRun: { select: { id: true, name: true, status: true } },
         },
       },
     },
@@ -368,7 +370,6 @@ export async function updateMilestone(
   const milestone = await prisma.milestone.findFirst({ where: { id: milestoneId, projectId } });
   if (!milestone) throw new AppError('Milestone not found', 404);
 
-  // Build update object only with defined fields (exactOptionalPropertyTypes fix)
   const updateData: Record<string, unknown> = {};
   if (data.name !== undefined) updateData.name = data.name;
   if (data.description !== undefined) updateData.description = data.description ?? null;

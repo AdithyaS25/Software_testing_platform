@@ -8,31 +8,26 @@ export const BugsPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { user } = useAuth();
   const nav = useNavigate();
-  const [bugs, setBugs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [bugs,           setBugs]           = useState<any[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [search,         setSearch]         = useState("");
+  const [statusFilter,   setStatusFilter]   = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState("");
-  const [view, setView] = useState<"all" | "mine">(user?.role === "DEVELOPER" ? "mine" : "all");
+  const [view,           setView]           = useState<"all" | "mine">(user?.role === "DEVELOPER" ? "mine" : "all");
 
   const load = () => {
     if (!projectId) return;
     setLoading(true);
-
-    const endpoint =
-      view === "mine" && user?.role === "DEVELOPER"
-        ? `/api/projects/${projectId}/bugs/my`
-        : `/api/projects/${projectId}/bugs`;
-
+    const endpoint = view === "mine" && user?.role === "DEVELOPER"
+      ? `/api/projects/${projectId}/bugs/my`
+      : `/api/projects/${projectId}/bugs`;
     const params = new URLSearchParams();
-    if (statusFilter) params.set("status", statusFilter);
+    if (statusFilter)   params.set("status",   statusFilter);
     if (priorityFilter) params.set("priority", priorityFilter);
     if (severityFilter) params.set("severity", severityFilter);
-
-    apiClient
-      .get(`${endpoint}?${params}`)
-      .then((r) => { setBugs(r.data.data || r.data || []); setLoading(false); })
+    apiClient.get(`${endpoint}?${params}`)
+      .then(r => { setBugs(r.data.data || r.data || []); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
@@ -47,35 +42,42 @@ export const BugsPage = () => {
   const ageLabel = (date: string) => {
     if (!date) return "—";
     const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
-    return days === 0 ? "Today" : days === 1 ? "1 day ago" : `${days} days ago`;
+    if (days === 0) return "Today";
+    if (days === 1) return "1 day ago";
+    return `${days}d ago`;
   };
 
   return (
-    <div style={{ animation: "fadeIn 0.3s ease" }}>
+    <div style={{ animation: "fadeIn 0.4s ease" }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">Bug Reports</h1>
-          <p className="page-subtitle">{bugs.length} bugs</p>
+          <p className="page-subtitle">{bugs.length} bugs tracked</p>
         </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {/* Developer toggle */}
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {user?.role === "DEVELOPER" && (
             <div style={{
-              display: "flex", background: "var(--bg-elevated)",
-              border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 2,
+              display: "flex",
+              background: "rgba(14,17,35,0.8)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: "var(--radius-md)", padding: 3,
+              backdropFilter: "blur(8px)",
             }}>
-              {["all", "mine"].map((v) => (
+              {["all", "mine"].map(v => (
                 <button
                   key={v}
                   onClick={() => setView(v as "all" | "mine")}
                   style={{
-                    padding: "5px 14px", borderRadius: "var(--radius-sm)",
+                    padding: "6px 16px", borderRadius: "var(--radius-sm)",
                     border: "none", cursor: "pointer",
-                    background: view === v ? "var(--accent)" : "transparent",
+                    background: view === v
+                      ? "linear-gradient(135deg, var(--accent) 0%, #5a35d9 100%)"
+                      : "transparent",
                     color: view === v ? "#fff" : "var(--text-muted)",
-                    fontSize: "0.8rem", fontWeight: 500,
-                    fontFamily: "var(--font-sans)", transition: "all var(--transition)",
+                    fontSize: "0.8rem", fontWeight: 600,
+                    fontFamily: "var(--font-display)",
+                    transition: "all var(--transition)",
+                    boxShadow: view === v ? "0 2px 10px rgba(120,87,255,0.3)" : "none",
                   }}
                 >
                   {v === "all" ? "All Bugs" : "My Bugs"}
@@ -83,8 +85,6 @@ export const BugsPage = () => {
               ))}
             </div>
           )}
-
-          {/* Create bug — Tester / Admin only */}
           {(user?.role === "TESTER" || user?.role === "ADMIN") && (
             <Button onClick={() => nav(`/projects/${projectId}/bugs/new`)}>+ Create Bug</Button>
           )}
@@ -109,7 +109,9 @@ export const BugsPage = () => {
           { value: "MAJOR", label: "Major" }, { value: "MINOR", label: "Minor" }, { value: "TRIVIAL", label: "Trivial" },
         ]} />
         {(statusFilter || priorityFilter || severityFilter) && (
-          <Button variant="ghost" size="sm" onClick={() => { setStatusFilter(""); setPriorityFilter(""); setSeverityFilter(""); }}>Clear</Button>
+          <Button variant="ghost" size="sm" onClick={() => { setStatusFilter(""); setPriorityFilter(""); setSeverityFilter(""); }}>
+            Clear filters
+          </Button>
         )}
       </div>
 
@@ -126,7 +128,15 @@ export const BugsPage = () => {
           }
         />
       ) : (
-        <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+        <div style={{
+          background: "rgba(14, 17, 35, 0.7)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: "var(--radius-lg)",
+          overflow: "hidden",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          boxShadow: "var(--shadow-card)",
+        }}>
           <table className="tt-table">
             <thead>
               <tr>
@@ -139,17 +149,27 @@ export const BugsPage = () => {
               {filtered.map(bug => (
                 <tr key={bug.id}>
                   <td>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                    <span style={{
+                      fontFamily: "var(--font-mono)", fontSize: "0.72rem",
+                      color: "var(--text-muted)",
+                      background: "rgba(255,255,255,0.04)",
+                      padding: "2px 7px", borderRadius: 4,
+                    }}>
                       {bug.bugId || bug.id?.slice(0, 8)}
                     </span>
                   </td>
                   <td>
                     <button
-                      // ← was nav(`/bugs/${bug.id}`) — missing projectId
                       onClick={() => nav(`/projects/${projectId}/bugs/${bug.id}`)}
-                      style={{ background: "none", border: "none", color: "var(--text-primary)", cursor: "pointer", fontWeight: 500, fontSize: "0.875rem", textAlign: "left", fontFamily: "var(--font-sans)", padding: 0 }}
-                      onMouseEnter={e => (e.currentTarget).style.color = "var(--accent)"}
-                      onMouseLeave={e => (e.currentTarget).style.color = "var(--text-primary)"}
+                      style={{
+                        background: "none", border: "none",
+                        color: "var(--text-primary)", cursor: "pointer",
+                        fontWeight: 500, fontSize: "0.875rem",
+                        textAlign: "left", fontFamily: "var(--font-sans)", padding: 0,
+                        transition: "color var(--transition)",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = "var(--text-primary)"; }}
                     >
                       {bug.title}
                     </button>
@@ -157,23 +177,29 @@ export const BugsPage = () => {
                   <td>
                     <PriorityBadge value={
                       bug.priority
-                        ?.replace("P1_URGENT", "CRITICAL")
-                        ?.replace("P2_HIGH", "HIGH")
-                        ?.replace("P3_MEDIUM", "MEDIUM")
-                        ?.replace("P4_LOW", "LOW")
+                        ?.replace("P1_URGENT","CRITICAL")
+                        ?.replace("P2_HIGH","HIGH")
+                        ?.replace("P3_MEDIUM","MEDIUM")
+                        ?.replace("P4_LOW","LOW")
                     } />
                   </td>
                   <td><SeverityBadge value={bug.severity} /></td>
                   <td><StatusBadge value={bug.status} /></td>
                   <td>
                     <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>
-                      {bug.assignedTo?.email?.split("@")[0] || <span style={{ color: "var(--text-muted)" }}>Unassigned</span>}
+                      {bug.assignedTo?.email?.split("@")[0] || (
+                        <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>Unassigned</span>
+                      )}
                     </span>
                   </td>
-                  <td><span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{ageLabel(bug.createdAt)}</span></td>
+                  <td>
+                    <span style={{
+                      color: "var(--text-muted)", fontSize: "0.78rem",
+                      fontFamily: "var(--font-mono)",
+                    }}>{ageLabel(bug.createdAt)}</span>
+                  </td>
                   <td>
                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                      {/* ← was nav(`/bugs/${bug.id}`) — missing projectId */}
                       <Button variant="ghost" size="sm" onClick={() => nav(`/projects/${projectId}/bugs/${bug.id}`)}>View</Button>
                     </div>
                   </td>

@@ -1,3 +1,5 @@
+// File: apps/api/src/middleware/authenticate.ts
+
 import { RequestHandler } from "express";
 import { AuthenticatedRequest } from "../types/auth-request";
 import jwt, { JwtPayload } from "jsonwebtoken";
@@ -12,7 +14,7 @@ interface AccessTokenPayload extends JwtPayload {
 function verifyAccessToken(token: string): AccessTokenPayload {
   const secret = process.env.JWT_ACCESS_SECRET;
 
-  console.log("🔐 Using access secret:", secret);
+  // ✅ Removed: console.log("🔐 Using access secret:", secret) — exposes secret in logs
 
   if (!secret) {
     throw new Error("JWT_ACCESS_SECRET is not defined");
@@ -20,7 +22,8 @@ function verifyAccessToken(token: string): AccessTokenPayload {
 
   try {
     const decoded = jwt.verify(token, secret);
-    console.log("📦 Raw decoded:", decoded);
+
+    // ✅ Removed: console.log("📦 Raw decoded:", decoded)
 
     if (typeof decoded === "string") {
       throw new Error("Invalid token payload");
@@ -38,36 +41,28 @@ function verifyAccessToken(token: string): AccessTokenPayload {
 
     return payload as AccessTokenPayload;
   } catch (err: any) {
-    console.log("❌ jwt.verify error:", err.message);
+    // ✅ Removed noisy console.log — only rethrow so caller handles it
     throw err;
   }
 }
 
-/* ✅ FIXED */
-export const authenticate: RequestHandler = (
-  req,
-  res,
-  next
-) => {
+export const authenticate: RequestHandler = (req, res, next) => {
   const authReq = req as AuthenticatedRequest;
-
   const authHeader = req.headers.authorization;
 
-  console.log("🔍 Authorization header:", authHeader);
+  // ✅ Removed: console.log("🔍 Authorization header:", authHeader)
+  // ✅ Removed: console.log("🔑 Extracted token:", token)
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    console.log("❌ Missing or malformed Authorization header");
     return res.status(401).json({ message: "Missing or invalid token" });
   }
 
   const token = authHeader.split(" ")[1]!;
 
-  console.log("🔑 Extracted token:", token);
-
   try {
     const payload = verifyAccessToken(token);
 
-    console.log("✅ Decoded payload:", payload);
+    // ✅ Removed: console.log("✅ Decoded payload:", payload)
 
     authReq.user = {
       id: payload.sub,
@@ -77,12 +72,11 @@ export const authenticate: RequestHandler = (
 
     next();
   } catch (err: any) {
-    console.log("❌ JWT verification failed:", err.message);
+    // ✅ Removed: console.log("❌ JWT verification failed:", err.message)
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 
-/* ✅ FIXED */
 export const authorize =
   (allowedRoles: UserRole[]): RequestHandler =>
   (req, res, next) => {
