@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer from 'nodemailer';
 
 interface SendEmailOptions {
   to: string;
@@ -13,7 +13,7 @@ function getTransporter(): nodemailer.Transporter {
   if (_transporter) return _transporter;
 
   _transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: Number(process.env.SMTP_PORT) || 587,
     secure: false, // STARTTLS
     auth: {

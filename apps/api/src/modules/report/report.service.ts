@@ -1,26 +1,24 @@
-import { prisma } from "../../prisma";
-import { TestExecutionReport } from "./report.types";
-import { ExecutionStatus, StepStatus } from "@prisma/client";
+import { prisma } from '../../prisma';
+import { TestExecutionReport } from './report.types';
+import { ExecutionStatus, StepStatus } from '@prisma/client';
 
 export async function generateTestExecutionReport(
   projectId: string,
   testRunId: string
-){
-
+) {
   const testRun = await prisma.testRun.findFirst({
-    where: { 
-      id: testRunId, 
-      projectId 
+    where: {
+      id: testRunId,
+      projectId,
     },
-      include: {
+    include: {
       executions: true,
     },
   });
 
   if (!testRun) {
-    throw new Error("Test Run not found for this project");
+    throw new Error('Test Run not found for this project');
   }
-
 
   // =============================
   // SUMMARY
@@ -29,17 +27,17 @@ export async function generateTestExecutionReport(
   const totalExecuted = await prisma.execution.count({
     where: {
       testRunId,
-      overallResult: { not: null }
-    }
+      overallResult: { not: null },
+    },
   });
 
   const statusBreakdown = await prisma.execution.groupBy({
-    by: ["overallResult"],
+    by: ['overallResult'],
     where: {
       testRunId,
-      overallResult: { not: null }
+      overallResult: { not: null },
     },
-    _count: { overallResult: true }
+    _count: { overallResult: true },
   });
 
   let passed = 0;
@@ -47,15 +45,17 @@ export async function generateTestExecutionReport(
   let blocked = 0;
   let skipped = 0;
 
-  statusBreakdown.forEach((item: {
-    overallResult: StepStatus | null;
-    _count: { overallResult: number };
-  }) => {
-    if (item.overallResult === "PASS") passed = item._count.overallResult;
-    if (item.overallResult === "FAIL") failed = item._count.overallResult;
-    if (item.overallResult === "BLOCKED") blocked = item._count.overallResult;
-    if (item.overallResult === "SKIPPED") skipped = item._count.overallResult;
-  });
+  statusBreakdown.forEach(
+    (item: {
+      overallResult: StepStatus | null;
+      _count: { overallResult: number };
+    }) => {
+      if (item.overallResult === 'PASS') passed = item._count.overallResult;
+      if (item.overallResult === 'FAIL') failed = item._count.overallResult;
+      if (item.overallResult === 'BLOCKED') blocked = item._count.overallResult;
+      if (item.overallResult === 'SKIPPED') skipped = item._count.overallResult;
+    }
+  );
 
   const passRate = totalExecuted
     ? Number(((passed / totalExecuted) * 100).toFixed(1))
@@ -66,26 +66,25 @@ export async function generateTestExecutionReport(
   // =============================
 
   const executionByTesterRaw = await prisma.execution.groupBy({
-    by: ["executedById"],
+    by: ['executedById'],
     where: { testRunId },
-    _count: { id: true }
+    _count: { id: true },
   });
 
   const executionByTester = await Promise.all(
-    executionByTesterRaw.map(async (entry: {
-      executedById: string;
-      _count: { id: number };
-    }) => {
-      const user = await prisma.user.findUnique({
-        where: { id: entry.executedById }
-      });
+    executionByTesterRaw.map(
+      async (entry: { executedById: string; _count: { id: number } }) => {
+        const user = await prisma.user.findUnique({
+          where: { id: entry.executedById },
+        });
 
-      return {
-        testerId: entry.executedById,
-        testerEmail: user?.email ?? "Unknown",
-        total: entry._count.id
-      };
-    })
+        return {
+          testerId: entry.executedById,
+          testerEmail: user?.email ?? 'Unknown',
+          total: entry._count.id,
+        };
+      }
+    )
   );
 
   // =============================
@@ -94,7 +93,7 @@ export async function generateTestExecutionReport(
 
   const executions = await prisma.execution.findMany({
     where: { testRunId },
-    include: { testCase: true }
+    include: { testCase: true },
   });
 
   const moduleMap: Record<string, { total: number; failed: number }> = {};
@@ -108,52 +107,48 @@ export async function generateTestExecutionReport(
 
     moduleMap[module].total++;
 
-    if (exec.overallResult === "FAIL") {
+    if (exec.overallResult === 'FAIL') {
       moduleMap[module].failed++;
     }
   });
 
-  const executionByModule = Object.entries(moduleMap).map(
-    ([module, data]) => ({
-      module,
-      total: data.total,
-      failed: data.failed
-    })
-  );
+  const executionByModule = Object.entries(moduleMap).map(([module, data]) => ({
+    module,
+    total: data.total,
+    failed: data.failed,
+  }));
 
   // =============================
-// TIMELINE (Grouped by Date)
-// =============================
+  // TIMELINE (Grouped by Date)
+  // =============================
 
-const timelineRaw = await prisma.execution.findMany({
-  where: {
-    testRunId,
-    completedAt: { not: null }
-  },
-  select: {
-    completedAt: true
-  }
-});
+  const timelineRaw = await prisma.execution.findMany({
+    where: {
+      testRunId,
+      completedAt: { not: null },
+    },
+    select: {
+      completedAt: true,
+    },
+  });
 
-const timelineMap: Record<string, number> = {};
+  const timelineMap: Record<string, number> = {};
 
-timelineRaw.forEach((item) => {
-  if (!item.completedAt) return;
+  timelineRaw.forEach((item) => {
+    if (!item.completedAt) return;
 
-  const isoString = item.completedAt.toISOString();
-  const date = isoString.split("T")[0];
+    const isoString = item.completedAt.toISOString();
+    const date = isoString.split('T')[0];
 
-  if (!date) return; // <-- strict safety
+    if (!date) return; // <-- strict safety
 
-  timelineMap[date] = (timelineMap[date] ?? 0) + 1;
-});
+    timelineMap[date] = (timelineMap[date] ?? 0) + 1;
+  });
 
-const timeline = Object.entries(timelineMap).map(
-  ([date, total]) => ({
+  const timeline = Object.entries(timelineMap).map(([date, total]) => ({
     date,
-    total
-  })
-);
+    total,
+  }));
 
   // =============================
   // FAILED TEST CASE DETAILS
@@ -162,19 +157,19 @@ const timeline = Object.entries(timelineMap).map(
   const failedExecutions = await prisma.execution.findMany({
     where: {
       testRunId,
-      overallResult: "FAIL"
+      overallResult: 'FAIL',
     },
     include: {
       testCase: true,
-      executedBy: true
-    }
+      executedBy: true,
+    },
   });
 
   const failedTestCases = failedExecutions.map((exec) => ({
     testCaseId: exec.testCase.testCaseId,
     title: exec.testCase.title,
     executedBy: exec.executedBy.email,
-    completedAt: exec.completedAt
+    completedAt: exec.completedAt,
   }));
 
   return {
@@ -182,7 +177,7 @@ const timeline = Object.entries(timelineMap).map(
       id: testRun.id,
       name: testRun.name,
       startDate: testRun.startDate,
-      endDate: testRun.endDate
+      endDate: testRun.endDate,
     },
     summary: {
       totalExecuted,
@@ -190,11 +185,11 @@ const timeline = Object.entries(timelineMap).map(
       failed,
       blocked,
       skipped,
-      passRate
+      passRate,
     },
     executionByTester,
     executionByModule,
     timeline,
-    failedTestCases
+    failedTestCases,
   };
 }

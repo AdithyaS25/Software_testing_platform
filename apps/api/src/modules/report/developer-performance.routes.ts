@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { authenticate, authorize } from "../../middleware/auth.middleware";
-import { UserRole } from "@prisma/client";
-import { getDeveloperPerformanceController } from "./developer-performance.controller";
+import { Router } from 'express';
+import { authenticate, authorize } from '../../middleware/auth.middleware';
+import { UserRole } from '@prisma/client';
+import { getDeveloperPerformanceController } from './developer-performance.controller';
 
 const router: Router = Router();
 
@@ -19,7 +19,7 @@ const router: Router = Router();
  *         description: Developer performance report generated successfully
  */
 router.get(
-  "/developer-performance",
+  '/developer-performance',
   authenticate,
   authorize([UserRole.TESTER, UserRole.DEVELOPER, UserRole.ADMIN]),
   getDeveloperPerformanceController

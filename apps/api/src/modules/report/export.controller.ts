@@ -1,8 +1,5 @@
-import { Request, Response } from "express";
-import {
-  exportTestExecutionCSV,
-  exportBugReportCSV,
-} from "./export.service";
+import { Request, Response } from 'express';
+import { exportTestExecutionCSV, exportBugReportCSV } from './export.service';
 
 /* ============================
    EXPORT TEST EXECUTION CSV
@@ -25,18 +22,15 @@ export const exportTestExecutionController = async (
 
   if (!projectId || !testRunId) {
     return res.status(400).json({
-      message: "Invalid Project ID or Test Run ID",
+      message: 'Invalid Project ID or Test Run ID',
     });
   }
 
-  const csv = await exportTestExecutionCSV(
-    projectId,
-    testRunId
-  );
+  const csv = await exportTestExecutionCSV(projectId, testRunId);
 
-  res.setHeader("Content-Type", "text/csv");
+  res.setHeader('Content-Type', 'text/csv');
   res.setHeader(
-    "Content-Disposition",
+    'Content-Disposition',
     `attachment; filename="test-execution-${testRunId}.csv"`
   );
 
@@ -59,15 +53,15 @@ export const exportBugReportController = async (
 
   if (!projectId) {
     return res.status(400).json({
-      message: "Invalid Project ID",
+      message: 'Invalid Project ID',
     });
   }
 
   const csv = await exportBugReportCSV(projectId);
 
-  res.setHeader("Content-Type", "text/csv");
+  res.setHeader('Content-Type', 'text/csv');
   res.setHeader(
-    "Content-Disposition",
+    'Content-Disposition',
     `attachment; filename="bug-report-${projectId}.csv"`
   );
 

@@ -1,132 +1,127 @@
-import { prisma } from "../../prisma";
-import { DashboardReport } from "./dashboard.types";
+import { prisma } from '../../prisma';
+import { DashboardReport } from './dashboard.types';
 
-export const generateDashboardReport =
-  async (projectId: string): Promise<DashboardReport> => {
-    // =============================
-    // SUMMARY METRICS (PROJECT SCOPED)
-    // =============================
+export const generateDashboardReport = async (
+  projectId: string
+): Promise<DashboardReport> => {
+  // =============================
+  // SUMMARY METRICS (PROJECT SCOPED)
+  // =============================
 
-    const totalTestRuns = await prisma.testRun.count({
-      where: { projectId },
-    });
+  const totalTestRuns = await prisma.testRun.count({
+    where: { projectId },
+  });
 
-    const totalExecutions = await prisma.execution.count({
-      where: {
-        testRun: { projectId },
+  const totalExecutions = await prisma.execution.count({
+    where: {
+      testRun: { projectId },
+    },
+  });
+
+  const totalBugs = await prisma.bug.count({
+    where: { projectId },
+  });
+
+  const passedExecutions = await prisma.execution.count({
+    where: {
+      overallResult: 'PASS',
+      testRun: { projectId },
+    },
+  });
+
+  const overallPassRate =
+    totalExecutions > 0
+      ? Number(((passedExecutions / totalExecutions) * 100).toFixed(1))
+      : 0;
+
+  const openBugs = await prisma.bug.count({
+    where: {
+      projectId,
+      resolvedAt: null,
+    },
+  });
+
+  const criticalBugs = await prisma.bug.count({
+    where: {
+      projectId,
+      severity: 'CRITICAL',
+    },
+  });
+
+  // =============================
+  // DATE RANGE (Last 7 Days)
+  // =============================
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // =============================
+  // EXECUTION TREND (PROJECT SCOPED)
+  // =============================
+
+  const executions = await prisma.execution.findMany({
+    where: {
+      completedAt: {
+        not: null,
+        gte: sevenDaysAgo,
       },
-    });
+      testRun: { projectId },
+    },
+    select: { completedAt: true },
+  });
 
-    const totalBugs = await prisma.bug.count({
-      where: { projectId },
-    });
+  const executionMap: Record<string, number> = {};
 
-    const passedExecutions = await prisma.execution.count({
-      where: {
-        overallResult: "PASS",
-        testRun: { projectId },
-      },
-    });
+  executions.forEach((e) => {
+    if (!e.completedAt) return;
 
-    const overallPassRate =
-      totalExecutions > 0
-        ? Number(
-            ((passedExecutions / totalExecutions) * 100).toFixed(1)
-          )
-        : 0;
+    const date = e.completedAt.toISOString().split('T')[0];
+    if (!date) return;
 
-    const openBugs = await prisma.bug.count({
-      where: {
-        projectId,
-        resolvedAt: null,
-      },
-    });
+    executionMap[date] = (executionMap[date] ?? 0) + 1;
+  });
 
-    const criticalBugs = await prisma.bug.count({
-      where: {
-        projectId,
-        severity: "CRITICAL",
-      },
-    });
+  const executionTrend = Object.entries(executionMap).map(([date, total]) => ({
+    date,
+    total,
+  }));
 
-    // =============================
-    // DATE RANGE (Last 7 Days)
-    // =============================
+  // =============================
+  // BUG TREND (PROJECT SCOPED)
+  // =============================
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const bugs = await prisma.bug.findMany({
+    where: {
+      projectId,
+      createdAt: { gte: sevenDaysAgo },
+    },
+    select: { createdAt: true },
+  });
 
-    // =============================
-    // EXECUTION TREND (PROJECT SCOPED)
-    // =============================
+  const bugMap: Record<string, number> = {};
 
-    const executions = await prisma.execution.findMany({
-      where: {
-        completedAt: {
-          not: null,
-          gte: sevenDaysAgo,
-        },
-        testRun: { projectId },
-      },
-      select: { completedAt: true },
-    });
+  bugs.forEach((b) => {
+    const date = b.createdAt.toISOString().split('T')[0];
+    if (!date) return;
 
-    const executionMap: Record<string, number> = {};
+    bugMap[date] = (bugMap[date] ?? 0) + 1;
+  });
 
-    executions.forEach((e) => {
-      if (!e.completedAt) return;
+  const bugTrend = Object.entries(bugMap).map(([date, total]) => ({
+    date,
+    total,
+  }));
 
-      const date = e.completedAt.toISOString().split("T")[0];
-      if (!date) return;
-
-      executionMap[date] = (executionMap[date] ?? 0) + 1;
-    });
-
-    const executionTrend = Object.entries(executionMap).map(
-      ([date, total]) => ({
-        date,
-        total,
-      })
-    );
-
-    // =============================
-    // BUG TREND (PROJECT SCOPED)
-    // =============================
-
-    const bugs = await prisma.bug.findMany({
-      where: {
-        projectId,
-        createdAt: { gte: sevenDaysAgo },
-      },
-      select: { createdAt: true },
-    });
-
-    const bugMap: Record<string, number> = {};
-
-    bugs.forEach((b) => {
-      const date = b.createdAt.toISOString().split("T")[0];
-      if (!date) return;
-
-      bugMap[date] = (bugMap[date] ?? 0) + 1;
-    });
-
-    const bugTrend = Object.entries(bugMap).map(
-      ([date, total]) => ({
-        date,
-        total,
-      })
-    );
-
-    return {
-      summary: {
-        totalTestRuns,
-        totalExecutions,
-        overallPassRate,
-        totalBugs,
-        openBugs,
-        criticalBugs,
-      },
-      executionTrend,
-      bugTrend,
-    };
+  return {
+    summary: {
+      totalTestRuns,
+      totalExecutions,
+      overallPassRate,
+      totalBugs,
+      openBugs,
+      criticalBugs,
+    },
+    executionTrend,
+    bugTrend,
   };
+};

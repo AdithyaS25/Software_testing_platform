@@ -1,15 +1,15 @@
-import { Router } from "express";
-import { UserRole } from "@prisma/client";
-import { authenticate, authorize } from "../../middleware/auth.middleware";
-import { asHandler } from "../../utils/async-handler";
+import { Router } from 'express';
+import { UserRole } from '@prisma/client';
+import { authenticate, authorize } from '../../middleware/auth.middleware';
+import { asHandler } from '../../utils/async-handler';
 import {
   createExecutionController,
   updateExecutionController,
   completeExecutionController,
   uploadExecutionEvidenceController,
   failAndCreateBugController,
-} from "./execution.controller";
-import { uploadEvidence } from "../../middleware/uploadEvidence";
+} from './execution.controller';
+import { uploadEvidence } from '../../middleware/uploadEvidence';
 
 const router: Router = Router();
 
@@ -38,7 +38,7 @@ const router: Router = Router();
  *         description: Execution created successfully
  */
 router.post(
-  "/",
+  '/',
   asHandler(authenticate),
   asHandler(authorize([UserRole.TESTER])),
   asHandler(createExecutionController)
@@ -85,7 +85,7 @@ router.post(
  *         description: Execution updated successfully
  */
 router.patch(
-  "/:id",
+  '/:id',
   asHandler(authenticate),
   asHandler(authorize([UserRole.TESTER])),
   asHandler(updateExecutionController)
@@ -111,7 +111,7 @@ router.patch(
  *         description: Execution completed
  */
 router.post(
-  "/:id/complete",
+  '/:id/complete',
   asHandler(authenticate),
   asHandler(authorize([UserRole.TESTER])),
   asHandler(completeExecutionController)
@@ -156,10 +156,10 @@ router.post(
  *         description: Forbidden
  */
 router.post(
-  "/:executionId/steps/:stepId/evidence",
+  '/:executionId/steps/:stepId/evidence',
   asHandler(authenticate),
   asHandler(authorize([UserRole.TESTER])),
-  uploadEvidence.single("file"),
+  uploadEvidence.single('file'),
   asHandler(uploadExecutionEvidenceController)
 );
 
@@ -190,7 +190,7 @@ router.post(
  *         description: Validation error
  */
 router.post(
-  "/:executionId/steps/:stepId/fail-and-create-bug",
+  '/:executionId/steps/:stepId/fail-and-create-bug',
   asHandler(authenticate),
   asHandler(authorize([UserRole.TESTER])),
   asHandler(failAndCreateBugController)

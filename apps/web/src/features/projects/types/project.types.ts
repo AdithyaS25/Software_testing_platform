@@ -1,9 +1,6 @@
 // ─── Status Types ────────────────────────────────────────────
 
-export type ProjectStatus =
-  | 'ACTIVE'
-  | 'ARCHIVED'
-  | 'COMPLETED';
+export type ProjectStatus = 'ACTIVE' | 'ARCHIVED' | 'COMPLETED';
 
 export type MilestoneStatus =
   | 'UPCOMING'
