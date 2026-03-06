@@ -1,7 +1,4 @@
 // File: apps/api/src/modules/execution/execution.controller.ts
-// FIX: failAndCreateBugController used hardcoded 'default-project-001' for projectId.
-// Now reads projectId from execution.testCase.projectId properly.
-// Also: priority/severity use enum values (P3_MEDIUM not P3-MEDIUM).
 
 import { prisma } from "../../prisma";
 import { RequestHandler } from "express";
@@ -49,7 +46,7 @@ export const uploadExecutionEvidenceController: RequestHandler = async (req, res
       return res.status(404).json({ message: "Execution step not found" });
 
     const updated = await prisma.executionStep.update({
-      where: { id: stepId },           // stepId is already String() above
+      where: { id: stepId },
       data:  { evidenceUrl: `/uploads/${req.file.filename}` },
     });
     return res.status(200).json({ message: "Evidence uploaded successfully", data: updated });
@@ -64,10 +61,10 @@ export const failAndCreateBugController: RequestHandler = async (req, res) => {
   try {
     const result = await prisma.$transaction(async (tx) => {
       const execution = await tx.execution.findUnique({
-  where:   { id: String(executionId) },
-  include: { testCase: true },
-});
-      if (!execution)                      throw new Error("Execution not found");
+        where:   { id: String(executionId) },
+        include: { testCase: true },
+      });
+      if (!execution)                       throw new Error("Execution not found");
       if (execution.status === "COMPLETED") throw new Error("Execution already completed");
 
       const step = await tx.executionStep.findUnique({ where: { id: String(stepId) } });
@@ -75,10 +72,22 @@ export const failAndCreateBugController: RequestHandler = async (req, res) => {
 
       await tx.executionStep.update({ where: { id: String(stepId) }, data: { status: "FAIL" } });
 
-      const bugCount = await tx.bug.count({ where: { projectId: execution.testCase.projectId } });
-      const bugId    = `BUG-${new Date().getFullYear()}-${String(bugCount + 1).padStart(5, "0")}`;
+      // ✅ Fixed: use findFirst + desc ordering (same as bug.service.ts nextBugId)
+      // The old count+1 approach causes unique constraint violations under concurrent calls
+      const year   = new Date().getFullYear();
+      const prefix = `BUG-${year}-`;
+      const last   = await tx.bug.findFirst({
+        where:   { bugId: { startsWith: prefix }, projectId: execution.testCase.projectId },
+        orderBy: { bugId: "desc" },
+        select:  { bugId: true },
+      });
+      let next = 1;
+      if (last?.bugId) {
+        const seq = parseInt(last.bugId.replace(prefix, ""), 10);
+        if (!isNaN(seq)) next = seq + 1;
+      }
+      const bugId = `${prefix}${String(next).padStart(5, "0")}`;
 
-      // Accept overrides from request body (title, description, severity, priority)
       const body = req.body || {};
 
       return tx.bug.create({
@@ -89,13 +98,11 @@ export const failAndCreateBugController: RequestHandler = async (req, res) => {
           expectedBehavior: step.expectedResult ?? "Expected result not provided",
           actualBehavior:   step.actualResult   ?? "Actual result not provided",
           severity:         (body.severity as BugSeverity) || BugSeverity.MAJOR,
-          // FIX: was hardcoded BugPriority.P3_MEDIUM — now accepts from body
           priority:         (body.priority as BugPriority) || BugPriority.P3_MEDIUM,
           status:           BugStatus.NEW,
           testCaseId:       execution.testCaseId,
           executionId,
-          executionStepId: String(stepId),
-          // FIX: was hardcoded 'default-project-001' — now uses actual projectId
+          executionStepId:  String(stepId),
           projectId:        execution.testCase.projectId,
         },
       });

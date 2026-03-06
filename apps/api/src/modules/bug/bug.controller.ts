@@ -182,6 +182,23 @@ export async function addCommentController(req: Request, res: Response) {
   return res.status(201).json({ success: true, data: comment });
 }
 
+export async function getCommentsController(req: Request, res: Response) {
+  const bugId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const projectId = Array.isArray(req.params.projectId) ? req.params.projectId[0] : req.params.projectId;
+
+  if (!bugId || !projectId) return res.status(400).json({ message: "Invalid parameters" });
+
+  const comments = await prisma.bugComment.findMany({
+    where: { bugId },
+    orderBy: { createdAt: "asc" },
+    include: {
+      author: { select: { id: true, email: true, role: true } },
+    },
+  });
+
+  return res.status(200).json({ success: true, data: comments });
+};
+
 /* ── Delete Comment ─────────────────────────────────────── */
 export async function deleteCommentController(req: Request, res: Response) {
   const id     = String(req.params.id);

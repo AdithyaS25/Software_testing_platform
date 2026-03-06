@@ -12,6 +12,7 @@ import {
   assignBugController,
   addCommentController,
   deleteCommentController,
+  getCommentsController
 } from "./bug.controller";
 
 const router: Router = Router({ mergeParams: true });
@@ -45,6 +46,13 @@ router.get(
   "/",
   asHandler(authenticate),
   asHandler(getBugsController)
+);
+
+// GET /api/projects/:projectId/bugs/:id/comments
+router.get(
+  "/:id/comments",
+  asHandler(authenticate),
+  asHandler(getCommentsController)
 );
 
 // GET /api/projects/:projectId/bugs/:id
