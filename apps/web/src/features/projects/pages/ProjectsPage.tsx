@@ -1,6 +1,8 @@
+// File: apps/web/src/features/projects/pages/ProjectsPage.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectApi } from '../api/projectApi';
+import { useAuth } from '../../../app/providers/AuthProvider';
 import type { Project } from '../types/project.types';
 import CreateProjectModal from '../components/CreateProjectModal';
 import { ConfirmDialog } from '../../../shared/components/ui';
@@ -13,6 +15,8 @@ const statusConfig: Record<string, { color: string; bg: string; glow: string }> 
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
   const [projects,        setProjects]        = useState<Project[]>([]);
   const [loading,         setLoading]         = useState(true);
   const [error,           setError]           = useState('');
@@ -24,10 +28,18 @@ export default function ProjectsPage() {
     try {
       setLoading(true);
       const data = await projectApi.getAll();
-      // ✅ Bug 3 fixed: client-side safety filter — never show ARCHIVED or DELETED
-      setProjects(
-  (data || []).filter((p: Project) => p.status !== 'ARCHIVED')
-);
+      const active = (data || []).filter((p: Project) => p.status !== 'ARCHIVED');
+      setProjects(active);
+
+      // ✅ Auto-redirect developers straight to their most relevant project
+      // Prefers a project they're a MEMBER of (not owner) — that's where their bugs are
+      // Falls back to first project if they own everything
+      if (user?.role === 'DEVELOPER' && active.length > 0) {
+        const memberProject = active.find((p: Project) => p.owner?.id !== user.id);
+        const target = memberProject ?? active[0];
+        navigate(`/projects/${target.id}/dashboard`, { replace: true });
+        return;
+      }
     } catch {
       setError('Failed to load projects');
     } finally {
@@ -47,7 +59,6 @@ export default function ProjectsPage() {
     setDeleting(true);
     try {
       await projectApi.delete(deleteTarget.id);
-      // ✅ Bug 3 fixed: remove from list immediately after delete succeeds
       setProjects(p => p.filter(proj => proj.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err: any) {
@@ -86,7 +97,6 @@ export default function ProjectsPage() {
 
   return (
     <div style={{ animation: 'fadeIn 0.4s ease' }}>
-      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Projects</h1>
@@ -100,16 +110,12 @@ export default function ProjectsPage() {
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             background: 'linear-gradient(135deg, var(--accent) 0%, #5a35d9 100%)',
-            color: '#fff', border: 'none',
-            borderRadius: 'var(--radius-md)',
-            padding: '10px 20px',
-            fontSize: '0.875rem', fontWeight: 700,
+            color: '#fff', border: 'none', borderRadius: 'var(--radius-md)',
+            padding: '10px 20px', fontSize: '0.875rem', fontWeight: 700,
             cursor: 'pointer',
             boxShadow: '0 4px 20px rgba(120,87,255,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-            fontFamily: 'var(--font-display)',
-            letterSpacing: '0.01em',
-            transition: 'all var(--transition)',
-            position: 'relative', overflow: 'hidden',
+            fontFamily: 'var(--font-display)', letterSpacing: '0.01em',
+            transition: 'all var(--transition)', position: 'relative', overflow: 'hidden',
           }}
           onMouseEnter={e => {
             e.currentTarget.style.transform = 'translateY(-2px)';
@@ -124,32 +130,24 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      {/* Empty state */}
       {projects.length === 0 && (
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           justifyContent: 'center', padding: '80px 20px',
           background: 'rgba(255,255,255,0.015)',
           border: '1px dashed rgba(255,255,255,0.08)',
-          borderRadius: 'var(--radius-xl)',
-          textAlign: 'center',
+          borderRadius: 'var(--radius-xl)', textAlign: 'center',
         }}>
           <div style={{ fontSize: '3.5rem', marginBottom: 16, filter: 'drop-shadow(0 0 20px rgba(120,87,255,0.4))' }}>🗂</div>
-          <p style={{
-            color: 'var(--text-secondary)', fontSize: '1.05rem',
-            fontWeight: 600, marginBottom: 8, fontFamily: 'var(--font-display)',
-          }}>No projects yet</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', fontWeight: 600, marginBottom: 8, fontFamily: 'var(--font-display)' }}>No projects yet</p>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 24 }}>Create your first project to get started</p>
           <button
             onClick={() => setShowCreateModal(true)}
             style={{
               background: 'linear-gradient(135deg, var(--accent) 0%, #5a35d9 100%)',
-              color: '#fff', border: 'none',
-              borderRadius: 'var(--radius-md)',
-              padding: '10px 22px',
-              fontSize: '0.875rem', fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(120,87,255,0.35)',
+              color: '#fff', border: 'none', borderRadius: 'var(--radius-md)',
+              padding: '10px 22px', fontSize: '0.875rem', fontWeight: 700,
+              cursor: 'pointer', boxShadow: '0 4px 20px rgba(120,87,255,0.35)',
               fontFamily: 'var(--font-display)',
             }}
           >
@@ -158,14 +156,11 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Project grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-        gap: 18,
-      }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 18 }}>
         {projects.map((project) => {
           const sc = statusConfig[project.status] || statusConfig.ARCHIVED;
+          const isOwner = project.owner?.id === user?.id;
+
           return (
             <div
               key={project.id}
@@ -174,13 +169,9 @@ export default function ProjectsPage() {
               style={{
                 background: 'rgba(14, 17, 35, 0.8)',
                 border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 22,
-                cursor: 'pointer',
-                position: 'relative',
-                overflow: 'hidden',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
+                borderRadius: 'var(--radius-lg)', padding: 22,
+                cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
                 boxShadow: 'var(--shadow-card)',
               }}
               onMouseEnter={e => {
@@ -192,122 +183,76 @@ export default function ProjectsPage() {
                 (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-card)';
               }}
             >
-              {/* Top accent line */}
-              <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-                background: `linear-gradient(90deg, transparent, ${sc.color}, transparent)`,
-                opacity: 0.6,
-              }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, transparent, ${sc.color}, transparent)`, opacity: 0.6 }} />
+              <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle, ${sc.glow} 0%, transparent 70%)`, pointerEvents: 'none' }} />
 
-              {/* Background glow */}
-              <div style={{
-                position: 'absolute', top: -30, right: -30,
-                width: 120, height: 120,
-                borderRadius: '50%',
-                background: `radial-gradient(circle, ${sc.glow} 0%, transparent 70%)`,
-                pointerEvents: 'none',
-              }} />
-
-              {/* Top row: key + status + delete */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <span style={{
-                  background: 'rgba(120,87,255,0.12)',
-                  color: 'var(--accent)',
-                  fontSize: '0.7rem', fontWeight: 800,
-                  padding: '4px 10px',
-                  borderRadius: 'var(--radius-sm)',
-                  letterSpacing: '0.1em',
-                  fontFamily: 'var(--font-mono)',
-                  border: '1px solid rgba(120,87,255,0.2)',
-                }}>
-                  {project.key}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    background: 'rgba(120,87,255,0.12)', color: 'var(--accent)',
+                    fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px',
+                    borderRadius: 'var(--radius-sm)', letterSpacing: '0.1em',
+                    fontFamily: 'var(--font-mono)', border: '1px solid rgba(120,87,255,0.2)',
+                  }}>{project.key}</span>
+                  {/* ✅ "Member" badge so devs can clearly see which project has their work */}
+                  {!isOwner && (
+                    <span style={{
+                      fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px',
+                      borderRadius: '100px', background: 'rgba(16,185,129,0.1)',
+                      color: 'var(--success)', border: '1px solid rgba(16,185,129,0.25)',
+                    }}>Member</span>
+                  )}
+                </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{
                     fontSize: '0.68rem', fontWeight: 700, padding: '3px 9px',
-                    borderRadius: '100px',
-                    background: sc.bg,
-                    color: sc.color,
-                    border: `1px solid ${sc.color}30`,
-                    fontFamily: 'var(--font-display)',
-                  }}>
-                    {project.status}
-                  </span>
-
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(project); }}
-                    title="Delete project"
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      width: 28, height: 28, borderRadius: 'var(--radius-sm)',
-                      border: '1px solid transparent',
-                      background: 'transparent', color: 'var(--text-muted)',
-                      cursor: 'pointer', fontSize: '0.85rem',
-                      transition: 'all var(--transition)',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = 'rgba(255,79,109,0.1)';
-                      e.currentTarget.style.borderColor = 'rgba(255,79,109,0.3)';
-                      e.currentTarget.style.color = 'var(--danger)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.borderColor = 'transparent';
-                      e.currentTarget.style.color = 'var(--text-muted)';
-                    }}
-                  >🗑</button>
+                    borderRadius: '100px', background: sc.bg, color: sc.color,
+                    border: `1px solid ${sc.color}30`, fontFamily: 'var(--font-display)',
+                  }}>{project.status}</span>
+                  {/* ✅ Delete button only for owner — devs can't delete the tester's project */}
+                  {isOwner && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(project); }}
+                      title="Delete project"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 28, height: 28, borderRadius: 'var(--radius-sm)',
+                        border: '1px solid transparent', background: 'transparent',
+                        color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem',
+                        transition: 'all var(--transition)',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,79,109,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,79,109,0.3)'; e.currentTarget.style.color = 'var(--danger)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                    >🗑</button>
+                  )}
                 </div>
               </div>
 
-              {/* Name */}
-              <h3 style={{
-                fontSize: '1rem', fontWeight: 700,
-                color: 'var(--text-primary)', marginBottom: 5,
-                letterSpacing: '-0.02em',
-                fontFamily: 'var(--font-display)',
-              }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 5, letterSpacing: '-0.02em', fontFamily: 'var(--font-display)' }}>
                 {project.name}
               </h3>
 
-              {/* Description */}
               {project.description && (
-                <p style={{
-                  fontSize: '0.8rem', color: 'var(--text-muted)',
-                  marginBottom: 16, lineHeight: 1.6,
-                  display: '-webkit-box', WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                   {project.description}
                 </p>
               )}
 
-              {/* Stats row */}
-              <div style={{
-                display: 'flex', gap: 0,
-                paddingTop: 14,
-                borderTop: '1px solid rgba(255,255,255,0.05)',
-                marginTop: project.description ? 0 : 14,
-              }}>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                Owner: <span style={{ color: 'var(--text-secondary)' }}>{project.owner?.email}</span>
+              </p>
+
+              <div style={{ display: 'flex', gap: 0, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 {[
                   { icon: '🧪', label: 'Tests',   count: project._count?.testCases ?? 0 },
                   { icon: '🐛', label: 'Bugs',    count: project._count?.bugs ?? 0 },
                   { icon: '▷',  label: 'Runs',    count: project._count?.testRuns ?? 0 },
                   { icon: '👥', label: 'Members', count: project._count?.members ?? 0 },
                 ].map(({ icon, label, count }, i, arr) => (
-                  <div key={label} style={{
-                    flex: 1,
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                    padding: '0 4px',
-                  }}>
+                  <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', padding: '0 4px' }}>
                     <span style={{ fontSize: '1rem', marginBottom: 2 }}>{icon}</span>
-                    <span style={{
-                      fontSize: '0.95rem', fontWeight: 800,
-                      color: 'var(--text-primary)',
-                      fontFamily: 'var(--font-display)',
-                      letterSpacing: '-0.02em',
-                    }}>{count}</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>{count}</span>
                     <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>{label}</span>
                   </div>
                 ))}
@@ -318,10 +263,7 @@ export default function ProjectsPage() {
       </div>
 
       {showCreateModal && (
-        <CreateProjectModal
-          onClose={() => setShowCreateModal(false)}
-          onCreated={handleCreated}
-        />
+        <CreateProjectModal onClose={() => setShowCreateModal(false)} onCreated={handleCreated} />
       )}
 
       <ConfirmDialog
