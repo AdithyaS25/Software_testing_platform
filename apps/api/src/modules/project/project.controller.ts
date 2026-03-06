@@ -1,17 +1,14 @@
 // File: apps/api/src/modules/project/project.controller.ts
 
 import { Request, Response, NextFunction } from 'express';
-import { prisma } from "../../prisma";
+import { prisma } from '../../prisma';
 import * as projectService from './project.service';
 
 // ─────────────────────────────────────────────────────────────
 // Helper: safely extract route params (strict mode safe)
 // ─────────────────────────────────────────────────────────────
 
-function getParam(
-  value: string | string[] | undefined,
-  name: string
-): string {
+function getParam(value: string | string[] | undefined, name: string): string {
   if (!value || Array.isArray(value)) {
     throw new Error(`Invalid or missing route parameter: ${name}`);
   }
@@ -20,7 +17,11 @@ function getParam(
 
 // ─── Projects ────────────────────────────────────────────────
 
-export async function createProject(req: Request, res: Response, next: NextFunction) {
+export async function createProject(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const project = await projectService.createProject(req.user!.id, req.body);
     res.status(201).json({ success: true, data: project });
@@ -29,7 +30,11 @@ export async function createProject(req: Request, res: Response, next: NextFunct
   }
 }
 
-export async function getAllProjects(req: Request, res: Response, next: NextFunction) {
+export async function getAllProjects(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const projects = await projectService.getAllProjects(req.user!.id);
     res.json({ success: true, data: projects });
@@ -38,7 +43,11 @@ export async function getAllProjects(req: Request, res: Response, next: NextFunc
   }
 }
 
-export async function getProjectById(req: Request, res: Response, next: NextFunction) {
+export async function getProjectById(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const project = await projectService.getProjectById(
       getParam(req.params.projectId, 'projectId'),
@@ -50,7 +59,11 @@ export async function getProjectById(req: Request, res: Response, next: NextFunc
   }
 }
 
-export async function updateProject(req: Request, res: Response, next: NextFunction) {
+export async function updateProject(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const project = await projectService.updateProject(
       getParam(req.params.projectId, 'projectId'),
@@ -64,24 +77,41 @@ export async function updateProject(req: Request, res: Response, next: NextFunct
 }
 
 // AFTER
-export async function deleteProject(req: Request, res: Response, next: NextFunction) {
+export async function deleteProject(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const projectId = req.params.projectId as string;
     if (!projectId) {
-      return res.status(400).json({ success: false, message: 'Missing projectId' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Missing projectId' });
     }
     const result = await projectService.deleteProject(projectId, req.user!.id);
     res.json({ success: true, data: result });
   } catch (err: any) {
     const msg: string = err?.message ?? '';
-    if (msg.toLowerCase().includes('forbidden') || msg.toLowerCase().includes('not owner') || msg.toLowerCase().includes('permission')) {
-      return res.status(403).json({ success: false, message: 'You do not have permission to delete this project' });
+    if (
+      msg.toLowerCase().includes('forbidden') ||
+      msg.toLowerCase().includes('not owner') ||
+      msg.toLowerCase().includes('permission')
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to delete this project',
+      });
     }
     next(err);
   }
 }
 
-export async function getMembers(req: Request, res: Response, next: NextFunction) {
+export async function getMembers(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const projectId = req.params.projectId as string;
 
@@ -104,7 +134,7 @@ export async function getMembers(req: Request, res: Response, next: NextFunction
       ...members,
     ];
     const seen = new Set<string>();
-    const unique = allUsers.filter(m => {
+    const unique = allUsers.filter((m) => {
       if (seen.has(m.user.id)) return false;
       seen.add(m.user.id);
       return true;
@@ -118,7 +148,11 @@ export async function getMembers(req: Request, res: Response, next: NextFunction
 
 // ─── Members ─────────────────────────────────────────────────
 
-export async function addMembers(req: Request, res: Response, next: NextFunction) {
+export async function addMembers(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const project = await projectService.addMembers(
       getParam(req.params.projectId, 'projectId'),
@@ -131,7 +165,11 @@ export async function addMembers(req: Request, res: Response, next: NextFunction
   }
 }
 
-export async function removeMember(req: Request, res: Response, next: NextFunction) {
+export async function removeMember(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const result = await projectService.removeMember(
       getParam(req.params.projectId, 'projectId'),
@@ -146,7 +184,11 @@ export async function removeMember(req: Request, res: Response, next: NextFuncti
 
 // ─── Environments ─────────────────────────────────────────────
 
-export async function upsertEnvironment(req: Request, res: Response, next: NextFunction) {
+export async function upsertEnvironment(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const env = await projectService.upsertEnvironment(
       getParam(req.params.projectId, 'projectId'),
@@ -160,7 +202,11 @@ export async function upsertEnvironment(req: Request, res: Response, next: NextF
   }
 }
 
-export async function deleteEnvironment(req: Request, res: Response, next: NextFunction) {
+export async function deleteEnvironment(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     await projectService.deleteEnvironment(
       getParam(req.params.projectId, 'projectId'),
@@ -175,7 +221,11 @@ export async function deleteEnvironment(req: Request, res: Response, next: NextF
 
 // ─── Custom Fields ────────────────────────────────────────────
 
-export async function upsertCustomField(req: Request, res: Response, next: NextFunction) {
+export async function upsertCustomField(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const field = await projectService.upsertCustomField(
       getParam(req.params.projectId, 'projectId'),
@@ -189,7 +239,11 @@ export async function upsertCustomField(req: Request, res: Response, next: NextF
   }
 }
 
-export async function deleteCustomField(req: Request, res: Response, next: NextFunction) {
+export async function deleteCustomField(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     await projectService.deleteCustomField(
       getParam(req.params.projectId, 'projectId'),
@@ -204,7 +258,11 @@ export async function deleteCustomField(req: Request, res: Response, next: NextF
 
 // ─── Milestones ───────────────────────────────────────────────
 
-export async function createMilestone(req: Request, res: Response, next: NextFunction) {
+export async function createMilestone(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const milestone = await projectService.createMilestone(
       getParam(req.params.projectId, 'projectId'),
@@ -217,7 +275,11 @@ export async function createMilestone(req: Request, res: Response, next: NextFun
   }
 }
 
-export async function getMilestones(req: Request, res: Response, next: NextFunction) {
+export async function getMilestones(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const milestones = await projectService.getMilestones(
       getParam(req.params.projectId, 'projectId'),
@@ -229,7 +291,11 @@ export async function getMilestones(req: Request, res: Response, next: NextFunct
   }
 }
 
-export async function getMilestoneById(req: Request, res: Response, next: NextFunction) {
+export async function getMilestoneById(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const milestone = await projectService.getMilestoneById(
       getParam(req.params.projectId, 'projectId'),
@@ -242,7 +308,11 @@ export async function getMilestoneById(req: Request, res: Response, next: NextFu
   }
 }
 
-export async function updateMilestone(req: Request, res: Response, next: NextFunction) {
+export async function updateMilestone(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const milestone = await projectService.updateMilestone(
       getParam(req.params.projectId, 'projectId'),
@@ -256,7 +326,11 @@ export async function updateMilestone(req: Request, res: Response, next: NextFun
   }
 }
 
-export async function deleteMilestone(req: Request, res: Response, next: NextFunction) {
+export async function deleteMilestone(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const result = await projectService.deleteMilestone(
       getParam(req.params.projectId, 'projectId'),
@@ -269,7 +343,11 @@ export async function deleteMilestone(req: Request, res: Response, next: NextFun
   }
 }
 
-export async function linkTestRuns(req: Request, res: Response, next: NextFunction) {
+export async function linkTestRuns(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const milestone = await projectService.linkTestRunsToMilestone(
       getParam(req.params.projectId, 'projectId'),
@@ -283,7 +361,11 @@ export async function linkTestRuns(req: Request, res: Response, next: NextFuncti
   }
 }
 
-export async function unlinkTestRun(req: Request, res: Response, next: NextFunction) {
+export async function unlinkTestRun(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const milestone = await projectService.unlinkTestRunFromMilestone(
       getParam(req.params.projectId, 'projectId'),

@@ -1,10 +1,16 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { apiClient } from "../../lib/axios";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+import { apiClient } from '../../lib/axios';
 
 interface User {
   id: string;
   email: string;
-  role: "ADMIN" | "DEVELOPER" | "TESTER";
+  role: 'ADMIN' | 'DEVELOPER' | 'TESTER';
 }
 
 interface AuthContextType {
@@ -21,11 +27,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = sessionStorage.getItem("accessToken");
+    const token = sessionStorage.getItem('accessToken');
     if (token) {
       try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        setUser({ id: payload.userId || payload.id, email: payload.email, role: payload.role });
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUser({
+          id: payload.userId || payload.id,
+          email: payload.email,
+          role: payload.role,
+        });
       } catch {
         sessionStorage.clear();
       }
@@ -34,25 +44,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-  const res = await apiClient.post("/api/auth/login", { email, password });
-  sessionStorage.setItem("accessToken", res.data.accessToken);
-  if (res.data.refreshToken) sessionStorage.setItem("refreshToken", res.data.refreshToken);
-  const payload = JSON.parse(atob(res.data.accessToken.split(".")[1]));
-  setUser({ id: payload.userId || payload.id, email: payload.email, role: payload.role });
-};
+    const res = await apiClient.post('/api/auth/login', { email, password });
+    sessionStorage.setItem('accessToken', res.data.accessToken);
+    if (res.data.refreshToken)
+      sessionStorage.setItem('refreshToken', res.data.refreshToken);
+    const payload = JSON.parse(atob(res.data.accessToken.split('.')[1]));
+    setUser({
+      id: payload.userId || payload.id,
+      email: payload.email,
+      role: payload.role,
+    });
+  };
 
-const logout = async () => {
-  try { await apiClient.post("/api/auth/logout-all"); } catch {}
-  sessionStorage.clear();
-  setUser(null);
-  window.location.href = "/login";
-};
+  const logout = async () => {
+    try {
+      await apiClient.post('/api/auth/logout-all');
+    } catch {}
+    sessionStorage.clear();
+    setUser(null);
+    window.location.href = '/login';
+  };
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 };

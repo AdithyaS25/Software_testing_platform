@@ -1,9 +1,9 @@
 // File: apps/api/src/middleware/authenticate.ts
 
-import { RequestHandler } from "express";
-import { AuthenticatedRequest } from "../types/auth-request";
-import jwt, { JwtPayload } from "jsonwebtoken";
-import { UserRole } from "@prisma/client";
+import { RequestHandler } from 'express';
+import { AuthenticatedRequest } from '../types/auth-request';
+import jwt, { JwtPayload } from 'jsonwebtoken';
+import { UserRole } from '@prisma/client';
 
 interface AccessTokenPayload extends JwtPayload {
   sub: string;
@@ -17,7 +17,7 @@ function verifyAccessToken(token: string): AccessTokenPayload {
   // ✅ Removed: console.log("🔐 Using access secret:", secret) — exposes secret in logs
 
   if (!secret) {
-    throw new Error("JWT_ACCESS_SECRET is not defined");
+    throw new Error('JWT_ACCESS_SECRET is not defined');
   }
 
   try {
@@ -25,18 +25,18 @@ function verifyAccessToken(token: string): AccessTokenPayload {
 
     // ✅ Removed: console.log("📦 Raw decoded:", decoded)
 
-    if (typeof decoded === "string") {
-      throw new Error("Invalid token payload");
+    if (typeof decoded === 'string') {
+      throw new Error('Invalid token payload');
     }
 
     const payload = decoded as JwtPayload;
 
     if (
-      typeof payload.sub !== "string" ||
-      typeof payload.email !== "string" ||
+      typeof payload.sub !== 'string' ||
+      typeof payload.email !== 'string' ||
       !Object.values(UserRole).includes(payload.role as UserRole)
     ) {
-      throw new Error("Malformed token payload");
+      throw new Error('Malformed token payload');
     }
 
     return payload as AccessTokenPayload;
@@ -53,11 +53,11 @@ export const authenticate: RequestHandler = (req, res, next) => {
   // ✅ Removed: console.log("🔍 Authorization header:", authHeader)
   // ✅ Removed: console.log("🔑 Extracted token:", token)
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Missing or invalid token" });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Missing or invalid token' });
   }
 
-  const token = authHeader.split(" ")[1]!;
+  const token = authHeader.split(' ')[1]!;
 
   try {
     const payload = verifyAccessToken(token);
@@ -73,7 +73,7 @@ export const authenticate: RequestHandler = (req, res, next) => {
     next();
   } catch (err: any) {
     // ✅ Removed: console.log("❌ JWT verification failed:", err.message)
-    return res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
 
@@ -83,15 +83,14 @@ export const authorize =
     const authReq = req as AuthenticatedRequest;
 
     if (!authReq.user) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({ message: 'Unauthorized' });
     }
 
     if (!allowedRoles.includes(authReq.user.role)) {
       return res.status(403).json({
-        message: "Forbidden: Insufficient role",
+        message: 'Forbidden: Insufficient role',
       });
     }
 
     next();
   };
-  

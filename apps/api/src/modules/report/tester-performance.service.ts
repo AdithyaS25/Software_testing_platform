@@ -1,11 +1,11 @@
-import { prisma } from "../../prisma";
-import { TesterPerformanceReport } from "./tester-performance.types";
+import { prisma } from '../../prisma';
+import { TesterPerformanceReport } from './tester-performance.types';
 
 export const generateTesterPerformanceReport =
   async (): Promise<TesterPerformanceReport> => {
     // Group executions by tester
     const grouped = await prisma.execution.groupBy({
-      by: ["executedById"],
+      by: ['executedById'],
       _count: { id: true },
     });
 
@@ -24,41 +24,30 @@ export const generateTesterPerformanceReport =
         const totalExecutions = executions.length;
 
         const passed = executions.filter(
-          (e) => e.overallResult === "PASS"
+          (e) => e.overallResult === 'PASS'
         ).length;
 
         const failed = executions.filter(
-          (e) => e.overallResult === "FAIL"
+          (e) => e.overallResult === 'FAIL'
         ).length;
 
         const blocked = executions.filter(
-          (e) => e.overallResult === "BLOCKED"
+          (e) => e.overallResult === 'BLOCKED'
         ).length;
 
         const skipped = executions.filter(
-          (e) => e.overallResult === "SKIPPED"
+          (e) => e.overallResult === 'SKIPPED'
         ).length;
 
         const passRate =
           totalExecutions > 0
-            ? Number(
-                (
-                  (passed / totalExecutions) *
-                  100
-                ).toFixed(1)
-              )
+            ? Number(((passed / totalExecutions) * 100).toFixed(1))
             : 0;
 
         const executionDurations = executions
-          .filter(
-            (e) =>
-              e.startedAt &&
-              e.completedAt
-          )
+          .filter((e) => e.startedAt && e.completedAt)
           .map((e) => {
-            const diff =
-              e.completedAt!.getTime() -
-              e.startedAt.getTime();
+            const diff = e.completedAt!.getTime() - e.startedAt.getTime();
             return diff / (1000 * 60); // minutes
           });
 
@@ -66,10 +55,8 @@ export const generateTesterPerformanceReport =
           executionDurations.length > 0
             ? Number(
                 (
-                  executionDurations.reduce(
-                    (a, b) => a + b,
-                    0
-                  ) / executionDurations.length
+                  executionDurations.reduce((a, b) => a + b, 0) /
+                  executionDurations.length
                 ).toFixed(1)
               )
             : 0;
@@ -84,7 +71,7 @@ export const generateTesterPerformanceReport =
 
         return {
           testerId,
-          testerEmail: user?.email ?? "Unknown",
+          testerEmail: user?.email ?? 'Unknown',
           totalExecutions,
           passed,
           failed,

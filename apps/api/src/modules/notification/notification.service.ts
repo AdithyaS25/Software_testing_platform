@@ -1,6 +1,6 @@
-import { NotificationType } from "@prisma/client";
-import { prisma } from "../../prisma";
-import { sendEmail } from "../../utils/email.utils";
+import { NotificationType } from '@prisma/client';
+import { prisma } from '../../prisma';
+import { sendEmail } from '../../utils/email.utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,11 +15,20 @@ interface CreateNotificationPayload {
 // ─── Preference field map ─────────────────────────────────────────────────────
 
 const PREF_MAP: Record<NotificationType, { email: string; inApp: string }> = {
-  BUG_ASSIGNED:       { email: "emailBugAssigned",      inApp: "inAppBugAssigned" },
-  BUG_STATUS_CHANGED: { email: "emailBugStatusChanged", inApp: "inAppBugStatusChanged" },
-  TEST_RUN_ASSIGNED:  { email: "emailTestAssigned",     inApp: "inAppTestAssigned" },
-  COMMENT_MENTION:    { email: "emailCommentMention",   inApp: "inAppCommentMention" },
-  RETEST_REQUESTED:   { email: "emailRetestRequested",  inApp: "inAppRetestRequested" },
+  BUG_ASSIGNED: { email: 'emailBugAssigned', inApp: 'inAppBugAssigned' },
+  BUG_STATUS_CHANGED: {
+    email: 'emailBugStatusChanged',
+    inApp: 'inAppBugStatusChanged',
+  },
+  TEST_RUN_ASSIGNED: { email: 'emailTestAssigned', inApp: 'inAppTestAssigned' },
+  COMMENT_MENTION: {
+    email: 'emailCommentMention',
+    inApp: 'inAppCommentMention',
+  },
+  RETEST_REQUESTED: {
+    email: 'emailRetestRequested',
+    inApp: 'inAppRetestRequested',
+  },
 };
 
 // ─── Core ─────────────────────────────────────────────────────────────────────
@@ -27,8 +36,11 @@ const PREF_MAP: Record<NotificationType, { email: string; inApp: string }> = {
 export async function createNotification(payload: CreateNotificationPayload) {
   const { userId, type, title, message, link } = payload;
 
-  let pref = await prisma.notificationPreference.findUnique({ where: { userId } });
-  if (!pref) pref = await prisma.notificationPreference.create({ data: { userId } });
+  let pref = await prisma.notificationPreference.findUnique({
+    where: { userId },
+  });
+  if (!pref)
+    pref = await prisma.notificationPreference.create({ data: { userId } });
 
   const prefKeys = PREF_MAP[type];
   if (!prefKeys) return;
@@ -51,13 +63,16 @@ export async function createNotification(payload: CreateNotificationPayload) {
 
   // Email
   if (prefRecord[prefKeys.email] !== false) {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
     if (user?.email) {
       sendEmail({
         to: user.email,
         subject: title,
         html: buildEmailHtml(title, message, link),
-      }).catch((err: unknown) => console.error("[Email] Failed to send:", err));
+      }).catch((err: unknown) => console.error('[Email] Failed to send:', err));
     }
   }
 }
@@ -65,20 +80,29 @@ export async function createNotification(payload: CreateNotificationPayload) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export async function notifyBugAssigned(opts: {
-  assignedToId: string; bugId: string; bugTitle: string; projectId: string; internalId: string;
+  assignedToId: string;
+  bugId: string;
+  bugTitle: string;
+  projectId: string;
+  internalId: string;
 }) {
   await createNotification({
-    userId:  opts.assignedToId,
-    type:    "BUG_ASSIGNED",
-    title:   `New bug assigned: ${opts.bugId}`,
+    userId: opts.assignedToId,
+    type: 'BUG_ASSIGNED',
+    title: `New bug assigned: ${opts.bugId}`,
     message: `You have been assigned bug "${opts.bugTitle}"`,
-    link:    `/projects/${opts.projectId}/bugs/${opts.internalId}`,
+    link: `/projects/${opts.projectId}/bugs/${opts.internalId}`,
   });
 }
 
 export async function notifyBugStatusChanged(opts: {
-  reporterId: string; assignedToId: string | null; bugId: string;
-  bugTitle: string; newStatus: string; projectId: string; internalId: string;
+  reporterId: string;
+  assignedToId: string | null;
+  bugId: string;
+  bugTitle: string;
+  newStatus: string;
+  projectId: string;
+  internalId: string;
 }) {
   const targets = new Set<string>();
   targets.add(opts.reporterId);
@@ -86,48 +110,59 @@ export async function notifyBugStatusChanged(opts: {
   for (const userId of targets) {
     await createNotification({
       userId,
-      type:    "BUG_STATUS_CHANGED",
-      title:   `Bug ${opts.bugId} status changed`,
-      message: `"${opts.bugTitle}" is now ${opts.newStatus.replace(/_/g, " ")}`,
-      link:    `/projects/${opts.projectId}/bugs/${opts.internalId}`,
+      type: 'BUG_STATUS_CHANGED',
+      title: `Bug ${opts.bugId} status changed`,
+      message: `"${opts.bugTitle}" is now ${opts.newStatus.replace(/_/g, ' ')}`,
+      link: `/projects/${opts.projectId}/bugs/${opts.internalId}`,
     });
   }
 }
 
 export async function notifyTestRunAssigned(opts: {
-  assignedToId: string; testRunName: string; projectId: string; testRunId: string;
+  assignedToId: string;
+  testRunName: string;
+  projectId: string;
+  testRunId: string;
 }) {
   await createNotification({
-    userId:  opts.assignedToId,
-    type:    "TEST_RUN_ASSIGNED",
-    title:   `Test run assigned: ${opts.testRunName}`,
+    userId: opts.assignedToId,
+    type: 'TEST_RUN_ASSIGNED',
+    title: `Test run assigned: ${opts.testRunName}`,
     message: `You have been assigned to test run "${opts.testRunName}"`,
-    link:    `/projects/${opts.projectId}/test-runs`,
+    link: `/projects/${opts.projectId}/test-runs`,
   });
 }
 
 export async function notifyCommentMention(opts: {
-  mentionedUserId: string; authorEmail: string; bugId: string;
-  bugTitle: string; projectId: string; internalId: string;
+  mentionedUserId: string;
+  authorEmail: string;
+  bugId: string;
+  bugTitle: string;
+  projectId: string;
+  internalId: string;
 }) {
   await createNotification({
-    userId:  opts.mentionedUserId,
-    type:    "COMMENT_MENTION",
-    title:   `You were mentioned in ${opts.bugId}`,
+    userId: opts.mentionedUserId,
+    type: 'COMMENT_MENTION',
+    title: `You were mentioned in ${opts.bugId}`,
     message: `${opts.authorEmail} mentioned you in "${opts.bugTitle}"`,
-    link:    `/projects/${opts.projectId}/bugs/${opts.internalId}`,
+    link: `/projects/${opts.projectId}/bugs/${opts.internalId}`,
   });
 }
 
 export async function notifyRetestRequested(opts: {
-  testerId: string; bugId: string; bugTitle: string; projectId: string; internalId: string;
+  testerId: string;
+  bugId: string;
+  bugTitle: string;
+  projectId: string;
+  internalId: string;
 }) {
   await createNotification({
-    userId:  opts.testerId,
-    type:    "RETEST_REQUESTED",
-    title:   `Re-test requested: ${opts.bugId}`,
+    userId: opts.testerId,
+    type: 'RETEST_REQUESTED',
+    title: `Re-test requested: ${opts.bugId}`,
     message: `A re-test has been requested for "${opts.bugTitle}"`,
-    link:    `/projects/${opts.projectId}/bugs/${opts.internalId}`,
+    link: `/projects/${opts.projectId}/bugs/${opts.internalId}`,
   });
 }
 
@@ -141,7 +176,7 @@ function buildEmailHtml(title: string, message: string, link?: string): string {
           View in TestTrack Pro
         </a>
        </p>`
-    : "";
+    : '';
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#f9fafb;border-radius:12px">
       <h2 style="color:#1f2937;margin-bottom:8px">${title}</h2>

@@ -1,10 +1,10 @@
-import { Router } from "express";
-import { authenticate, authorize } from "../../middleware/auth.middleware";
-import { UserRole } from "@prisma/client";
+import { Router } from 'express';
+import { authenticate, authorize } from '../../middleware/auth.middleware';
+import { UserRole } from '@prisma/client';
 import {
   exportTestExecutionController,
   exportBugReportController,
-} from "./export.controller";
+} from './export.controller';
 
 const router: Router = Router();
 
@@ -41,7 +41,7 @@ const router: Router = Router();
  *         description: Forbidden
  */
 router.get(
-  "/:projectId/export/test-execution/:testRunId",
+  '/:projectId/export/test-execution/:testRunId',
   authenticate,
   authorize([UserRole.TESTER, UserRole.DEVELOPER]),
   exportTestExecutionController
@@ -71,7 +71,7 @@ router.get(
  *         description: Forbidden
  */
 router.get(
-  "/:projectId/export/bugs",
+  '/:projectId/export/bugs',
   authenticate,
   authorize([UserRole.TESTER, UserRole.DEVELOPER, UserRole.ADMIN]),
   exportBugReportController

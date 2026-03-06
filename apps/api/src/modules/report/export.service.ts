@@ -1,5 +1,5 @@
-import { prisma } from "../../prisma";
-import { generateTestExecutionReport } from "./report.service";
+import { prisma } from '../../prisma';
+import { generateTestExecutionReport } from './report.service';
 
 /* ============================
    EXPORT TEST EXECUTION CSV
@@ -9,19 +9,9 @@ export async function exportTestExecutionCSV(
   projectId: string,
   testRunId: string
 ) {
-  const report = await generateTestExecutionReport(
-    projectId,
-    testRunId
-  );
+  const report = await generateTestExecutionReport(projectId, testRunId);
 
-  const rows = [
-    [
-      "Module",
-      "Total Executed",
-      "Failed",
-      "Passed",
-    ],
-  ];
+  const rows = [['Module', 'Total Executed', 'Failed', 'Passed']];
 
   report.executionByModule.forEach((item) => {
     const passed = item.total - item.failed;
@@ -34,30 +24,21 @@ export async function exportTestExecutionCSV(
     ]);
   });
 
-  return rows.map((row) => row.join(",")).join("\n");
+  return rows.map((row) => row.join(',')).join('\n');
 }
 
 /* ============================
    EXPORT BUG REPORT CSV
 ============================ */
 
-export async function exportBugReportCSV(
-  projectId: string
-) {
+export async function exportBugReportCSV(projectId: string) {
   const bugs = await prisma.bug.findMany({
     where: { projectId },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
   });
 
   const rows = [
-    [
-      "Bug ID",
-      "Title",
-      "Status",
-      "Priority",
-      "Severity",
-      "Created At",
-    ],
+    ['Bug ID', 'Title', 'Status', 'Priority', 'Severity', 'Created At'],
   ];
 
   bugs.forEach((bug) => {
@@ -71,5 +52,5 @@ export async function exportBugReportCSV(
     ]);
   });
 
-  return rows.map((row) => row.join(",")).join("\n");
+  return rows.map((row) => row.join(',')).join('\n');
 }

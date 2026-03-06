@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { authenticate, authorize } from "../../middleware/auth.middleware";
-import { UserRole } from "@prisma/client";
-import { getDashboardController } from "./dashboard.controller";
+import { Router } from 'express';
+import { authenticate, authorize } from '../../middleware/auth.middleware';
+import { UserRole } from '@prisma/client';
+import { getDashboardController } from './dashboard.controller';
 
 const router: Router = Router();
 
@@ -32,7 +32,7 @@ const router: Router = Router();
  *         description: Forbidden
  */
 router.get(
-  "/dashboard",
+  '/dashboard',
   authenticate,
   authorize([UserRole.TESTER, UserRole.DEVELOPER, UserRole.ADMIN]),
   getDashboardController

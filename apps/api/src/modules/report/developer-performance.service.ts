@@ -1,11 +1,11 @@
-import { prisma } from "../../prisma";
-import { DeveloperPerformanceReport } from "./developer-performance.types";
+import { prisma } from '../../prisma';
+import { DeveloperPerformanceReport } from './developer-performance.types';
 
 export const generateDeveloperPerformanceReport =
   async (): Promise<DeveloperPerformanceReport> => {
     // Get all developers who have assigned bugs
     const grouped = await prisma.bug.groupBy({
-      by: ["assignedToId"],
+      by: ['assignedToId'],
       _count: { id: true },
     });
 
@@ -36,9 +36,7 @@ export const generateDeveloperPerformanceReport =
           ).length;
 
           const resolutionDays = resolvedBugs.map((bug) => {
-            const diff =
-              bug.resolvedAt!.getTime() -
-              bug.createdAt.getTime();
+            const diff = bug.resolvedAt!.getTime() - bug.createdAt.getTime();
             return diff / (1000 * 60 * 60 * 24);
           });
 
@@ -46,43 +44,30 @@ export const generateDeveloperPerformanceReport =
             resolutionDays.length > 0
               ? Number(
                   (
-                    resolutionDays.reduce(
-                      (a, b) => a + b,
-                      0
-                    ) / resolutionDays.length
+                    resolutionDays.reduce((a, b) => a + b, 0) /
+                    resolutionDays.length
                   ).toFixed(1)
                 )
               : 0;
 
           const fastestResolutionDays =
             resolutionDays.length > 0
-              ? Number(
-                  Math.min(...resolutionDays).toFixed(1)
-                )
+              ? Number(Math.min(...resolutionDays).toFixed(1))
               : 0;
 
           const slowestResolutionDays =
             resolutionDays.length > 0
-              ? Number(
-                  Math.max(...resolutionDays).toFixed(1)
-                )
+              ? Number(Math.max(...resolutionDays).toFixed(1))
               : 0;
 
           const resolutionRate =
             totalAssigned > 0
-              ? Number(
-                  (
-                    (totalResolved /
-                      totalAssigned) *
-                    100
-                  ).toFixed(1)
-                )
+              ? Number(((totalResolved / totalAssigned) * 100).toFixed(1))
               : 0;
 
           return {
             developerId,
-            developerEmail:
-              user?.email ?? "Unknown",
+            developerEmail: user?.email ?? 'Unknown',
             totalAssigned,
             totalResolved,
             openBugs,
@@ -96,4 +81,3 @@ export const generateDeveloperPerformanceReport =
 
     return { developers };
   };
-  

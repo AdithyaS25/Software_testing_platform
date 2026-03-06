@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { getBugReportController } from "./bug-report.controller";
-import { authenticate, authorize } from "../../middleware/auth.middleware";
-import { UserRole } from "@prisma/client";
+import { Router } from 'express';
+import { getBugReportController } from './bug-report.controller';
+import { authenticate, authorize } from '../../middleware/auth.middleware';
+import { UserRole } from '@prisma/client';
 
 const router: Router = Router();
 
@@ -19,7 +19,7 @@ const router: Router = Router();
  *         description: Bug report generated successfully
  */
 router.get(
-  "/bug",
+  '/bug',
   authenticate,
   authorize([UserRole.TESTER, UserRole.DEVELOPER, UserRole.ADMIN]),
   getBugReportController

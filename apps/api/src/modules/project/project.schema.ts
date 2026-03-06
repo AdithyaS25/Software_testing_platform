@@ -95,10 +95,9 @@ export const createMilestoneSchema = z.object({
   body: z.object({
     name: z.string().min(1).max(100),
     description: z.string().max(500).optional(),
-    targetDate: z.string().refine(
-  (val) => !isNaN(Date.parse(val)),
-  { message: 'Invalid date format' }
-),
+    targetDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: 'Invalid date format',
+    }),
     passRateTarget: z.number().min(0).max(100).optional(),
     testRunIds: z.array(z.string().cuid()).optional(),
   }),
@@ -112,10 +111,12 @@ export const updateMilestoneSchema = z.object({
   body: z.object({
     name: z.string().min(1).max(100).optional(),
     description: z.string().max(500).optional(),
-    targetDate: z.string().refine(
-  (val) => !isNaN(Date.parse(val)),
-  { message: 'Invalid date format' }
-).optional(),
+    targetDate: z
+      .string()
+      .refine((val) => !isNaN(Date.parse(val)), {
+        message: 'Invalid date format',
+      })
+      .optional(),
     passRateTarget: z.number().min(0).max(100).optional(),
     status: z
       .enum(['UPCOMING', 'IN_PROGRESS', 'COMPLETED', 'MISSED'])
@@ -165,8 +166,16 @@ export const projectIdParamSchema = z.object({
 export type CreateProjectInput = z.infer<typeof createProjectSchema>['body'];
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>['body'];
 export type AddMembersInput = z.infer<typeof addMembersSchema>['body'];
-export type UpsertEnvironmentInput = z.infer<typeof upsertEnvironmentSchema>['body'];
-export type UpsertCustomFieldInput = z.infer<typeof upsertCustomFieldSchema>['body'];
-export type CreateMilestoneInput = z.infer<typeof createMilestoneSchema>['body'];
-export type UpdateMilestoneInput = z.infer<typeof updateMilestoneSchema>['body'];
+export type UpsertEnvironmentInput = z.infer<
+  typeof upsertEnvironmentSchema
+>['body'];
+export type UpsertCustomFieldInput = z.infer<
+  typeof upsertCustomFieldSchema
+>['body'];
+export type CreateMilestoneInput = z.infer<
+  typeof createMilestoneSchema
+>['body'];
+export type UpdateMilestoneInput = z.infer<
+  typeof updateMilestoneSchema
+>['body'];
 export type LinkTestRunsInput = z.infer<typeof linkTestRunsSchema>['body'];
