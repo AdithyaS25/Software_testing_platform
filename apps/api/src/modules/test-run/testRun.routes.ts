@@ -1,3 +1,4 @@
+// File: apps/api/src/modules/test-run/testRun.routes.ts
 import { Router } from "express";
 import { UserRole } from "@prisma/client";
 import { authenticate, authorize } from "../../middleware/auth.middleware";
@@ -7,9 +8,10 @@ import {
   getAllTestRunsController,
   assignTestRunCaseController,
   getTestRunByIdController,
+  deleteTestRunController,   // ✅ new
 } from "./testRun.controller";
 
-const router: Router = Router({ mergeParams: true }); // ← mergeParams so req.params.projectId is available
+const router: Router = Router({ mergeParams: true });
 
 // POST /api/projects/:projectId/test-runs
 router.post(
@@ -33,6 +35,14 @@ router.get(
   asHandler(authenticate),
   asHandler(authorize([UserRole.ADMIN, UserRole.DEVELOPER, UserRole.TESTER])),
   asHandler(getTestRunByIdController)
+);
+
+// ✅ Added: DELETE /api/projects/:projectId/test-runs/:id
+router.delete(
+  "/:id",
+  asHandler(authenticate),
+  asHandler(authorize([UserRole.ADMIN, UserRole.TESTER])),
+  asHandler(deleteTestRunController)
 );
 
 // PATCH /api/projects/:projectId/test-runs/assign

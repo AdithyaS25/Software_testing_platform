@@ -1,3 +1,4 @@
+// File: apps/api/src/modules/bug/bug.routes.ts
 import { Router } from "express";
 import { UserRole } from "@prisma/client";
 import { authenticate, authorize } from "../../middleware/auth.middleware";
@@ -29,6 +30,14 @@ router.get(
   asHandler(authenticate),
   asHandler(authorize([UserRole.DEVELOPER, UserRole.ADMIN])),
   asHandler(getMyBugsController)
+);
+
+// ✅ Fixed: DELETE /comments/:id MUST be registered BEFORE /:id/comments
+// Otherwise Express matches "comments" as the :id param on the /:id route
+router.delete(
+  "/comments/:id",
+  asHandler(authenticate),
+  asHandler(deleteCommentController)
 );
 
 // GET /api/projects/:projectId/bugs
@@ -65,13 +74,6 @@ router.post(
   "/:id/comments",
   asHandler(authenticate),
   asHandler(addCommentController)
-);
-
-// DELETE /api/projects/:projectId/bugs/comments/:id
-router.delete(
-  "/comments/:id",
-  asHandler(authenticate),
-  asHandler(deleteCommentController)
 );
 
 export default router;

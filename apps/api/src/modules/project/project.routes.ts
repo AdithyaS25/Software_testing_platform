@@ -22,7 +22,7 @@ import testCaseRoutes from "../test-cases/testCase.routes";
 import executionRoutes from "../execution/execution.routes";
 import reportRoutes from "../report/report.routes";
 
-const router: Router = Router();
+const router: Router = Router({ mergeParams: true });
 
 /* =======================
    GLOBAL AUTH FOR PROJECTS

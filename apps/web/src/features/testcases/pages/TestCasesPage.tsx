@@ -1,8 +1,13 @@
+// File: apps/web/src/features/test-cases/pages/TestCasesPage.tsx
+
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../../../lib/axios";
 import { useAuth } from "../../../app/providers/AuthProvider";
-import { Button, Badge, PriorityBadge, StatusBadge, SearchInput, Select, EmptyState, ConfirmDialog, useToast, Spinner } from "../../../shared/components/ui";
+import {
+  Button, Badge, PriorityBadge, StatusBadge,
+  SearchInput, Select, EmptyState, ConfirmDialog, useToast, Spinner,
+} from "../../../shared/components/ui";
 
 export const TestCasesPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -24,7 +29,7 @@ export const TestCasesPage = () => {
     if (!projectId) return;
     setLoading(true);
     apiClient.get(`/api/projects/${projectId}/test-cases`)
-      .then(r => { setCases(r.data.data || r.data || []); setLoading(false); })
+      .then(r => { setCases(r.data.items || r.data.data || r.data || []); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
@@ -38,29 +43,25 @@ export const TestCasesPage = () => {
   });
 
   const handleClone = async (id: string) => {
-    if (!projectId) return;
     try {
       await apiClient.post(`/api/projects/${projectId}/test-cases/${id}/clone`);
-      toast.success("Test case cloned");
-      load();
-    } catch { toast.error("Failed to clone test case"); }
+      toast.success("Test case cloned"); load();
+    } catch { toast.error("Failed to clone"); }
   };
 
-  // ✅ Bug 1 fixed: use correct state name (cases/setCases), close dialog, filter list
   const handleDelete = async (id: string) => {
-    if (!projectId) return;
     setDeleting(true);
     try {
       await apiClient.delete(`/api/projects/${projectId}/test-cases/${id}`);
-      setCases((prev: any[]) => prev.filter((tc: any) => tc.id !== id)); // remove from list immediately
-      setDeleteId(null);                                                   // close dialog
-      toast.success("Test case deleted");
-    } catch {
-      toast.error("Failed to delete test case");
-    } finally {
-      setDeleting(false);
-    }
+      setCases(prev => prev.filter(tc => tc.id !== id));
+      setDeleteId(null);
+      toast.success("Deleted");
+    } catch { toast.error("Failed to delete"); }
+    finally { setDeleting(false); }
   };
+
+  const sevColor = (s: string) =>
+    s === "BLOCKER" || s === "CRITICAL" ? "red" : s === "MAJOR" ? "orange" : "gray";
 
   return (
     <div style={{ animation: "fadeIn 0.4s ease" }}>
@@ -70,13 +71,10 @@ export const TestCasesPage = () => {
           <p className="page-subtitle">{cases.length} total test cases</p>
         </div>
         {canEdit && (
-          <Button icon="+" onClick={() => nav(`/projects/${projectId}/test-cases/new`)}>
-            New Test Case
-          </Button>
+          <Button icon="+" onClick={() => nav(`/projects/${projectId}/test-cases/new`)}>New Test Case</Button>
         )}
       </div>
 
-      {/* Filters */}
       <div className="filter-bar">
         <SearchInput value={search} onChange={setSearch} placeholder="Search by title or ID..." />
         <Select value={statusFilter} onChange={setStatusFilter} placeholder="All Statuses" options={[
@@ -84,38 +82,32 @@ export const TestCasesPage = () => {
           { value: "READY_FOR_REVIEW", label: "Ready for Review" },
           { value: "APPROVED",         label: "Approved" },
           { value: "DEPRECATED",       label: "Deprecated" },
-          { value: "ARCHIVED",         label: "Archived" },
         ]} />
         <Select value={priorityFilter} onChange={setPriorityFilter} placeholder="All Priorities" options={[
           { value: "CRITICAL", label: "Critical" }, { value: "HIGH",   label: "High" },
           { value: "MEDIUM",   label: "Medium" },   { value: "LOW",    label: "Low" },
         ]} />
         {(search || statusFilter || priorityFilter) && (
-          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter(""); setPriorityFilter(""); }}>
-            Clear filters
-          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter(""); setPriorityFilter(""); }}>Clear</Button>
         )}
       </div>
 
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 60 }}><Spinner size={28} /></div>
       ) : filtered.length === 0 ? (
-        <EmptyState
-          icon="✎" title="No test cases found"
+        <EmptyState icon="✎" title="No test cases found"
           desc={search ? "Try adjusting your filters" : "Create your first test case to get started"}
           action={canEdit ? <Button onClick={() => nav(`/projects/${projectId}/test-cases/new`)}>Create Test Case</Button> : undefined}
         />
       ) : (
         <div style={{
-          background: "rgba(14, 17, 35, 0.7)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          borderRadius: "var(--radius-lg)",
-          overflow: "hidden",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          boxShadow: "var(--shadow-card)",
+          background: "rgba(14,17,35,0.7)", border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: "var(--radius-lg)", overflow: "hidden",
+          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
         }}>
-          <table className="tt-table">
+          {/* ✅ No whitespace nodes inside colgroup — each col on one line, no comments between tags */}
+          <table className="tt-table" style={{ tableLayout: "fixed", width: "100%" }}>
+            <colgroup><col style={{ width: 100 }} /><col /><col style={{ width: 110 }} /><col style={{ width: 86 }} /><col style={{ width: 86 }} /><col style={{ width: 106 }} /><col style={{ width: 150 }} /></colgroup>
             <thead>
               <tr>
                 <th>ID</th>
@@ -124,8 +116,6 @@ export const TestCasesPage = () => {
                 <th>Priority</th>
                 <th>Severity</th>
                 <th>Status</th>
-                <th>Type</th>
-                <th>Tags</th>
                 <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
@@ -134,58 +124,84 @@ export const TestCasesPage = () => {
                 <tr key={tc.id}>
                   <td>
                     <span style={{
-                      fontFamily: "var(--font-mono)", fontSize: "0.72rem",
-                      color: "var(--text-muted)",
-                      background: "rgba(255,255,255,0.04)",
-                      padding: "2px 7px", borderRadius: 4,
+                      fontFamily: "var(--font-mono)", fontSize: "0.68rem", color: "var(--text-muted)",
+                      background: "rgba(255,255,255,0.04)", padding: "2px 6px", borderRadius: 4,
+                      display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
                       {tc.testCaseId || tc.id?.slice(0, 8)}
                     </span>
                   </td>
-                  <td>
-                    {/* ✅ Bug 2 fixed: navigate using tc.id (UUID), scoped to project */}
+                  <td style={{ overflow: "hidden" }}>
                     <Link
                       to={`/projects/${projectId}/test-cases/${tc.id}`}
-                      style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: 500, transition: "color var(--transition)" }}
+                      style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: 500, fontSize: "0.84rem", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                       onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--accent)"; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-primary)"; }}
                     >
                       {tc.title}
                     </Link>
+                    {/* Type + tags as a compact sub-line */}
+                    <div style={{ display: "flex", gap: 4, marginTop: 2, flexWrap: "wrap" }}>
+                      {tc.type && (
+                        <span style={{ fontSize: "0.64rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)", background: "rgba(255,255,255,0.04)", padding: "1px 5px", borderRadius: 3 }}>
+                          {tc.type}
+                        </span>
+                      )}
+                      {tc.tags?.slice(0, 1).map((t: string) => <Badge key={t} color="blue">{t}</Badge>)}
+                      {tc.tags?.length > 1 && <span style={{ fontSize: "0.64rem", color: "var(--text-muted)" }}>+{tc.tags.length - 1}</span>}
+                    </div>
                   </td>
-                  <td>
-                    <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem", background: "rgba(255,255,255,0.03)", padding: "2px 8px", borderRadius: 4 }}>
+                  <td style={{ overflow: "hidden" }}>
+                    <span style={{ color: "var(--text-secondary)", fontSize: "0.78rem", background: "rgba(255,255,255,0.03)", padding: "2px 7px", borderRadius: 4, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {tc.module || "—"}
                     </span>
                   </td>
                   <td><PriorityBadge value={tc.priority} /></td>
-                  <td>
-                    <Badge color={tc.severity === "BLOCKER" || tc.severity === "CRITICAL" ? "red" : tc.severity === "MAJOR" ? "orange" : "gray"}>
-                      {tc.severity}
-                    </Badge>
-                  </td>
+                  <td><Badge color={sevColor(tc.severity) as any}>{tc.severity}</Badge></td>
                   <td><StatusBadge value={tc.status} /></td>
                   <td>
-                    <span style={{ color: "var(--text-muted)", fontSize: "0.78rem", fontFamily: "var(--font-mono)" }}>
-                      {tc.type}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {tc.tags?.slice(0, 2).map((t: string) => <Badge key={t} color="blue">{t}</Badge>)}
-                      {tc.tags?.length > 2 && <Badge color="gray">+{tc.tags.length - 2}</Badge>}
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                      <Button variant="ghost" size="sm" onClick={() => nav(`/projects/${projectId}/test-cases/${tc.id}`)}>View</Button>
+                    {/* ✅ Tighter actions — icon buttons to save space */}
+                    <div style={{ display: "flex", gap: 3, justifyContent: "flex-end", alignItems: "center" }}>
+                      <button
+                        onClick={() => nav(`/projects/${projectId}/test-cases/${tc.id}`)}
+                        title="View"
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", color: "var(--text-secondary)", fontSize: "0.75rem", transition: "all var(--transition)" }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; }}
+                      >
+                        View
+                      </button>
+                      {canEdit && tc.status === "APPROVED" && (
+                        <button
+                          onClick={() => nav(`/projects/${projectId}/executions/${tc.id}`)}
+                          title="Run"
+                          style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", color: "var(--success)", fontSize: "0.75rem", transition: "all var(--transition)" }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(16,185,129,0.2)"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(16,185,129,0.1)"; }}
+                        >
+                          ▷
+                        </button>
+                      )}
                       {canEdit && (
                         <>
-                          {tc.status === "APPROVED" && (
-                            <Button variant="secondary" size="sm" onClick={() => nav(`/projects/${projectId}/executions/${tc.id}`)}>▷ Run</Button>
-                          )}
-                          <Button variant="ghost" size="sm" onClick={() => handleClone(tc.id)}>Clone</Button>
-                          <Button variant="danger" size="sm" onClick={() => setDeleteId(tc.id)}>Delete</Button>
+                          <button
+                            onClick={() => handleClone(tc.id)}
+                            title="Clone"
+                            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.75rem", transition: "all var(--transition)" }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; }}
+                          >
+                            ⎘
+                          </button>
+                          <button
+                            onClick={() => setDeleteId(tc.id)}
+                            title="Delete"
+                            style={{ background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.25)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", color: "var(--danger)", fontSize: "0.75rem", transition: "all var(--transition)" }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(244,63,94,0.18)"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(244,63,94,0.08)"; }}
+                          >
+                            ✕
+                          </button>
                         </>
                       )}
                     </div>
