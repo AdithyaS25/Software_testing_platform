@@ -1,19 +1,19 @@
-import { Response } from "express";
-import { AuthenticatedRequest } from "../../types/auth-request";
+import { Response } from 'express';
+import { AuthenticatedRequest } from '../../types/auth-request';
 import {
   createTestCaseSchema,
   listTestCasesQuerySchema,
-  updateTestCaseSchema
-} from "./testCase.schema";
+  updateTestCaseSchema,
+} from './testCase.schema';
 import {
   createTestCase,
   listTestCases,
   getTestCaseById,
   updateTestCase,
   cloneTestCase,
-  deleteTestCase
-} from "./testCase.service";
-import { getAuthUser } from "../../utils/getAuthUser";
+  deleteTestCase,
+} from './testCase.service';
+import { getAuthUser } from '../../utils/getAuthUser';
 
 /* ============================
    CREATE TEST CASE
@@ -23,11 +23,11 @@ export async function createTestCaseController(
   res: Response
 ) {
   try {
-  const parsed = createTestCaseSchema.safeParse(req.body);
+    const parsed = createTestCaseSchema.safeParse(req.body);
 
     if (!parsed.success) {
       return res.status(400).json({
-        message: "Invalid request body",
+        message: 'Invalid request body',
         errors: parsed.error.flatten(),
       });
     }
@@ -38,7 +38,7 @@ export async function createTestCaseController(
       : projectIdParam;
 
     if (!projectId) {
-      return res.status(400).json({ message: "Project ID is required" });
+      return res.status(400).json({ message: 'Project ID is required' });
     }
 
     const user = getAuthUser(req);
@@ -46,12 +46,14 @@ export async function createTestCaseController(
     const testCase = await createTestCase(projectId, parsed.data, user.id);
 
     return res.status(201).json({
-    message: "Test case created successfully",
-    data: testCase,
-  });
+      message: 'Test case created successfully',
+      data: testCase,
+    });
   } catch (err: any) {
-    console.error("❌ createTestCase error:", err);
-    return res.status(500).json({ message: err?.message ?? "Failed to create test case" });
+    console.error('❌ createTestCase error:', err);
+    return res
+      .status(500)
+      .json({ message: err?.message ?? 'Failed to create test case' });
   }
 }
 
@@ -67,7 +69,7 @@ export async function listTestCasesController(
 
   if (!parsed.success) {
     return res.status(400).json({
-      message: "Invalid query parameters",
+      message: 'Invalid query parameters',
       errors: parsed.error.flatten(),
     });
   }
@@ -78,7 +80,7 @@ export async function listTestCasesController(
     : projectIdParam;
 
   if (!projectId) {
-    return res.status(400).json({ message: "Project ID is required" });
+    return res.status(400).json({ message: 'Project ID is required' });
   }
 
   const { page, limit, status, priority, module, search } = parsed.data;
@@ -126,22 +128,17 @@ export async function getTestCaseByIdController(
 
   if (!id || !projectId) {
     return res.status(400).json({
-      message: "Invalid id or projectId",
+      message: 'Invalid id or projectId',
     });
   }
 
   const user = getAuthUser(req);
 
-  const testCase = await getTestCaseById(
-    projectId,
-    id,
-    user.id,
-    user.role
-  );
+  const testCase = await getTestCaseById(projectId, id, user.id, user.role);
 
   if (!testCase) {
     return res.status(404).json({
-      message: "Test case not found",
+      message: 'Test case not found',
     });
   }
 
@@ -168,7 +165,7 @@ export async function updateTestCaseController(
 
   if (!id || !projectId) {
     return res.status(400).json({
-      message: "Invalid id or projectId",
+      message: 'Invalid id or projectId',
     });
   }
 
@@ -176,7 +173,7 @@ export async function updateTestCaseController(
 
   if (!parsed.success) {
     return res.status(400).json({
-      message: "Invalid request body",
+      message: 'Invalid request body',
       errors: parsed.error.flatten(),
     });
   }
@@ -193,12 +190,12 @@ export async function updateTestCaseController(
 
   if (!updated) {
     return res.status(404).json({
-      message: "Test case not found",
+      message: 'Test case not found',
     });
   }
 
   return res.status(200).json({
-    message: "Test case updated successfully",
+    message: 'Test case updated successfully',
     data: updated,
   });
 }
@@ -221,27 +218,22 @@ export async function cloneTestCaseController(
 
   if (!id || !projectId) {
     return res.status(400).json({
-      message: "Invalid id or projectId",
+      message: 'Invalid id or projectId',
     });
   }
 
   const user = getAuthUser(req);
 
-  const cloned = await cloneTestCase(
-    projectId,
-    id,
-    user.id,
-    user.role
-  );
+  const cloned = await cloneTestCase(projectId, id, user.id, user.role);
 
   if (!cloned) {
     return res.status(404).json({
-      message: "Test case not found",
+      message: 'Test case not found',
     });
   }
 
   return res.status(201).json({
-    message: "Test case cloned successfully",
+    message: 'Test case cloned successfully',
     data: cloned,
   });
 }
@@ -264,26 +256,21 @@ export async function deleteTestCaseController(
 
   if (!id || !projectId) {
     return res.status(400).json({
-      message: "Invalid id or projectId",
+      message: 'Invalid id or projectId',
     });
   }
 
   const user = getAuthUser(req);
 
-  const deleted = await deleteTestCase(
-    projectId,
-    id,
-    user.id,
-    user.role
-  );
+  const deleted = await deleteTestCase(projectId, id, user.id, user.role);
 
   if (!deleted) {
     return res.status(404).json({
-      message: "Test case not found",
+      message: 'Test case not found',
     });
   }
 
   return res.status(200).json({
-    message: "Test case archived successfully",
+    message: 'Test case archived successfully',
   });
 }

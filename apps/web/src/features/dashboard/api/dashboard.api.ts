@@ -1,4 +1,4 @@
-import { apiClient } from "../../../lib/axios";
+import { apiClient } from '../../../lib/axios';
 
 export const getDashboardData = async (projectId: string) => {
   const res = await apiClient.get(

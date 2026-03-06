@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { notificationApi, type Notification } from "../api/notification.api";
-import { useAuth } from "../../../app/providers/AuthProvider";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { notificationApi, type Notification } from '../api/notification.api';
+import { useAuth } from '../../../app/providers/AuthProvider';
 
 const POLL_INTERVAL = 30_000; // 30 seconds
 
 export function useNotifications() {
   const { user } = useAuth();
-  const [notifications, setNotifications]   = useState<Notification[]>([]);
-  const [unreadCount,   setUnreadCount]     = useState(0);
-  const [loading,       setLoading]         = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchUnreadCount = useCallback(async () => {
@@ -19,16 +19,22 @@ export function useNotifications() {
     } catch {}
   }, [user]);
 
-  const fetchNotifications = useCallback(async (unreadOnly = false) => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const data = await notificationApi.getAll({ limit: 20, unread: unreadOnly });
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
-    } catch {}
-    setLoading(false);
-  }, [user]);
+  const fetchNotifications = useCallback(
+    async (unreadOnly = false) => {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const data = await notificationApi.getAll({
+          limit: 20,
+          unread: unreadOnly,
+        });
+        setNotifications(data.notifications);
+        setUnreadCount(data.unreadCount);
+      } catch {}
+      setLoading(false);
+    },
+    [user]
+  );
 
   const markRead = useCallback(async (id: string) => {
     await notificationApi.markRead(id);
@@ -52,12 +58,15 @@ export function useNotifications() {
     setUnreadCount(0);
   }, []);
 
-  const deleteNotif = useCallback(async (id: string) => {
-    const notif = notifications.find((n) => n.id === id);
-    await notificationApi.delete(id);
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-    if (notif && !notif.isRead) setUnreadCount((c) => Math.max(0, c - 1));
-  }, [notifications]);
+  const deleteNotif = useCallback(
+    async (id: string) => {
+      const notif = notifications.find((n) => n.id === id);
+      await notificationApi.delete(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      if (notif && !notif.isRead) setUnreadCount((c) => Math.max(0, c - 1));
+    },
+    [notifications]
+  );
 
   const clearAll = useCallback(async () => {
     await notificationApi.clearAll();

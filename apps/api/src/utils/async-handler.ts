@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction, RequestHandler } from "express";
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 
 export function asHandler(
   fn: (req: any, res: Response, next: NextFunction) => any

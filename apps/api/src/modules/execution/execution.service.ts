@@ -1,6 +1,5 @@
-import { prisma } from "../../prisma"; // adjust if your prisma import path differs
-import { ExecutionStatus, StepStatus } from "@prisma/client";
-
+import { prisma } from '../../prisma'; // adjust if your prisma import path differs
+import { ExecutionStatus, StepStatus } from '@prisma/client';
 
 // 1️⃣ Create Execution
 export const createExecutionService = async (
@@ -9,11 +8,11 @@ export const createExecutionService = async (
   userId: string
 ) => {
   if (!testCaseId) {
-    throw new Error("Test case ID is required");
+    throw new Error('Test case ID is required');
   }
 
   if (!testRunId) {
-    throw new Error("Test run ID is required");
+    throw new Error('Test run ID is required');
   }
 
   // Validate test case
@@ -23,7 +22,7 @@ export const createExecutionService = async (
   });
 
   if (!testCase) {
-    throw new Error("Test case not found");
+    throw new Error('Test case not found');
   }
 
   // Validate test run exists
@@ -32,7 +31,7 @@ export const createExecutionService = async (
   });
 
   if (!testRun) {
-    throw new Error("Test run not found");
+    throw new Error('Test run not found');
   }
 
   // ✅ CHECK IF EXECUTION ALREADY EXISTS (IDEMPOTENT GUARD)
@@ -82,7 +81,7 @@ export const updateExecutionService = async (
     status?: ExecutionStatus;
     steps?: {
       id: string;
-      status?: "PASS" | "FAIL" | "BLOCKED" | "SKIPPED";
+      status?: 'PASS' | 'FAIL' | 'BLOCKED' | 'SKIPPED';
       actualResult?: string;
       notes?: string;
     }[];
@@ -95,7 +94,7 @@ export const updateExecutionService = async (
   });
 
   if (!execution) {
-    throw new Error("Execution not found");
+    throw new Error('Execution not found');
   }
 
   // 🔹 Update execution status
@@ -112,8 +111,7 @@ export const updateExecutionService = async (
       const updateData: any = {};
 
       if (step.status) updateData.status = step.status;
-      if (step.actualResult)
-        updateData.actualResult = step.actualResult;
+      if (step.actualResult) updateData.actualResult = step.actualResult;
       if (step.notes) updateData.notes = step.notes;
 
       await prisma.executionStep.update({
@@ -137,22 +135,22 @@ export const completeExecutionService = async (executionId: string) => {
   });
 
   if (!execution) {
-    throw new Error("Execution not found");
+    throw new Error('Execution not found');
   }
 
   // Calculate overall result
-  let overallResult: any = "PASS";
+  let overallResult: any = 'PASS';
 
-  if (execution.steps.some((step) => step.status === "FAIL")) {
-    overallResult = "FAIL";
-  } else if (execution.steps.some((step) => step.status === "BLOCKED")) {
-    overallResult = "BLOCKED";
+  if (execution.steps.some((step) => step.status === 'FAIL')) {
+    overallResult = 'FAIL';
+  } else if (execution.steps.some((step) => step.status === 'BLOCKED')) {
+    overallResult = 'BLOCKED';
   }
 
   const completedExecution = await prisma.execution.update({
     where: { id: executionId },
     data: {
-      status: "COMPLETED",
+      status: 'COMPLETED',
       overallResult,
       completedAt: new Date(),
     },
@@ -161,40 +159,36 @@ export const completeExecutionService = async (executionId: string) => {
 
   // After marking execution completed
 
-// Find related TestRunTestCase
-const testRunCases = await prisma.testRunTestCase.findMany({
-  where: {
-    testCaseId: execution.testCaseId,
-  },
-});
-
-// Mark them as COMPLETED
-for (const trc of testRunCases) {
-  await prisma.testRunTestCase.update({
-    where: { id: trc.id },
-    data: { status: "COMPLETED" },
-  });
-}
-
-// Check if TestRun should be completed
-for (const trc of testRunCases) {
-  const runCases = await prisma.testRunTestCase.findMany({
-    where: { testRunId: trc.testRunId },
+  // Find related TestRunTestCase
+  const testRunCases = await prisma.testRunTestCase.findMany({
+    where: {
+      testCaseId: execution.testCaseId,
+    },
   });
 
-  const allCompleted = runCases.every(
-    (rc) => rc.status === "COMPLETED"
-  );
-
-  if (allCompleted) {
-    await prisma.testRun.update({
-      where: { id: trc.testRunId },
-      data: { status: "COMPLETED" },
+  // Mark them as COMPLETED
+  for (const trc of testRunCases) {
+    await prisma.testRunTestCase.update({
+      where: { id: trc.id },
+      data: { status: 'COMPLETED' },
     });
   }
-}
+
+  // Check if TestRun should be completed
+  for (const trc of testRunCases) {
+    const runCases = await prisma.testRunTestCase.findMany({
+      where: { testRunId: trc.testRunId },
+    });
+
+    const allCompleted = runCases.every((rc) => rc.status === 'COMPLETED');
+
+    if (allCompleted) {
+      await prisma.testRun.update({
+        where: { id: trc.testRunId },
+        data: { status: 'COMPLETED' },
+      });
+    }
+  }
 
   return completedExecution;
 };
-
-

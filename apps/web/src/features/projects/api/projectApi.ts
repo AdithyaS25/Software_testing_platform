@@ -1,7 +1,7 @@
 // File: apps/web/src/features/projects/api/projectApi.ts
 
 import { apiClient } from '../../../lib/axios';
- // your configured axios instance
+// your configured axios instance
 import type {
   Project,
   Milestone,
@@ -35,7 +35,10 @@ export const projectApi = {
     return data.data;
   },
 
-  update: async (projectId: string, payload: UpdateProjectDto): Promise<Project> => {
+  update: async (
+    projectId: string,
+    payload: UpdateProjectDto
+  ): Promise<Project> => {
     const { data } = await apiClient.patch(`${BASE}/${projectId}`, payload);
     return data.data;
   },
@@ -45,8 +48,14 @@ export const projectApi = {
   },
 
   // ─── Members
-  addMembers: async (projectId: string, payload: AddMembersDto): Promise<Project> => {
-    const { data } = await apiClient.post(`${BASE}/${projectId}/members`, payload);
+  addMembers: async (
+    projectId: string,
+    payload: AddMembersDto
+  ): Promise<Project> => {
+    const { data } = await apiClient.post(
+      `${BASE}/${projectId}/members`,
+      payload
+    );
     return data.data;
   },
 
@@ -78,7 +87,10 @@ export const projectApi = {
     return data.data;
   },
 
-  deleteEnvironment: async (projectId: string, envId: string): Promise<void> => {
+  deleteEnvironment: async (
+    projectId: string,
+    envId: string
+  ): Promise<void> => {
     await apiClient.delete(`${BASE}/${projectId}/environments/${envId}`);
   },
 
@@ -106,7 +118,10 @@ export const projectApi = {
     return data.data;
   },
 
-  deleteCustomField: async (projectId: string, fieldId: string): Promise<void> => {
+  deleteCustomField: async (
+    projectId: string,
+    fieldId: string
+  ): Promise<void> => {
     await apiClient.delete(`${BASE}/${projectId}/custom-fields/${fieldId}`);
   },
 
@@ -178,4 +193,3 @@ export const projectApi = {
     );
   },
 };
-

@@ -1,6 +1,6 @@
-import { AuthProvider } from "./app/providers/AuthProvider";
-import { AppRoutes } from "./app/routes/AppRoutes";
-import "./styles/global.css";
+import { AuthProvider } from './app/providers/AuthProvider';
+import { AppRoutes } from './app/routes/AppRoutes';
+import './styles/global.css';
 
 function App() {
   return (

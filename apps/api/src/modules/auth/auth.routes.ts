@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router } from 'express';
 import {
   registerController,
   loginController,
@@ -7,7 +7,7 @@ import {
   changePasswordController,
   refreshTokenController,
   logoutAllController,
-} from "./auth.controller";
+} from './auth.controller';
 
 const router: Router = Router();
 
@@ -40,7 +40,7 @@ const router: Router = Router();
  *       201:
  *         description: User registered successfully
  */
-router.post("/register", registerController);
+router.post('/register', registerController);
 
 /**
  * @openapi
@@ -67,7 +67,7 @@ router.post("/register", registerController);
  *       200:
  *         description: Successful login
  */
-router.post("/login", loginController);
+router.post('/login', loginController);
 
 /**
  * @openapi
@@ -91,7 +91,7 @@ router.post("/login", loginController);
  *       200:
  *         description: Password reset initiated
  */
-router.post("/forgot-password", forgotPasswordController);
+router.post('/forgot-password', forgotPasswordController);
 
 /**
  * @openapi
@@ -118,7 +118,7 @@ router.post("/forgot-password", forgotPasswordController);
  *       200:
  *         description: Password reset successful
  */
-router.post("/reset-password", resetPasswordController);
+router.post('/reset-password', resetPasswordController);
 
 /**
  * @openapi
@@ -147,7 +147,7 @@ router.post("/reset-password", resetPasswordController);
  *       200:
  *         description: Password changed successfully
  */
-router.post("/change-password", changePasswordController);
+router.post('/change-password', changePasswordController);
 
 /**
  * @openapi
@@ -171,7 +171,7 @@ router.post("/change-password", changePasswordController);
  *       200:
  *         description: New access token generated
  */
-router.post("/refresh", refreshTokenController);
+router.post('/refresh', refreshTokenController);
 
 /**
  * @openapi
@@ -186,6 +186,6 @@ router.post("/refresh", refreshTokenController);
  *       200:
  *         description: Logged out from all sessions
  */
-router.post("/logout-all", logoutAllController);
+router.post('/logout-all', logoutAllController);
 
 export default router;
