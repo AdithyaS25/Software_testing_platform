@@ -3,19 +3,19 @@ module.exports = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: './tsconfig.jest.json',
-      diagnostics: false,   // ← stops ts-jest from failing on import.meta errors
-    }],
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        tsconfig: './tsconfig.jest.json',
+        diagnostics: false, // ← stops ts-jest from failing on import.meta errors
+      },
+    ],
   },
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/fileMock.cjs',
     '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/__mocks__/fileMock.cjs',
   },
-  testMatch: [
-    '**/__tests__/**/*.{ts,tsx}',
-    '**/*.test.{ts,tsx}',
-  ],
+  testMatch: ['**/__tests__/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
   collectCoverageFrom: [
     'apps/web/src/**/*.{ts,tsx}',
     '!apps/web/src/**/*.d.ts',

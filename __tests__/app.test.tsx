@@ -17,7 +17,9 @@ jest.mock('../apps/web/src/lib/axios', () => ({
 }));
 
 jest.mock('../apps/web/src/app/providers/AuthProvider', () => ({
-  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AuthProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
   useAuth: () => ({ user: null, login: jest.fn(), logout: jest.fn() }),
 }));
 

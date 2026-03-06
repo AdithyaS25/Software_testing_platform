@@ -13,9 +13,5 @@
     "baseUrl": ".",
     "paths": {}
   },
-  "include": [
-    "apps/web/src/**/*",
-    "__tests__/**/*",
-    "jest.setup.ts"
-  ]
+  "include": ["apps/web/src/**/*", "__tests__/**/*", "jest.setup.ts"]
 }
